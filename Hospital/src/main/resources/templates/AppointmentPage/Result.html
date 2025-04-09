@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>예약 정보</title>
+    <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+
+    <style>
+    	.alert{
+    		color:black;
+    	}
+		body {
+							    font-family: 'Pretendard', sans-serif;
+							}
+    </style>
+    <script>
+    function confirmDelete(event) {
+      if (!confirm("해당 예약을 정말로 취소 하시겠습니까?")) {
+        event.preventDefault();
+        return false;
+      }
+      return true;
+    }
+  </script>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/AppointmentPage/Header.html"></header>
+    <div class="container mt-5" style="max-width:600px;">
+        <h3 class="text-center">예약 정보</h3>
+        <hr>
+		
+        <table class="table table-bordered">
+            <tbody>
+                <tr>
+                    <th class="bg-light">예약 번호</th>
+                    <td th:text="${AppointmentInfo.Id + '번'}"></td>
+                </tr>
+                <tr>
+                    <th class="bg-light">아이디</th>
+                    <td th:text="${AppointmentInfo.UserId}"></td>
+                </tr>
+                <tr>
+                    <th class="bg-light">이름</th>
+                    <td th:text="${AppointmentInfo.patientName}"></td>
+                </tr>
+                <tr>
+                    <th class="bg-light">주민번호 앞 6자리</th>
+                    <td th:text="${UserInfo.UserRegNum}"></td>
+                </tr>
+                <tr>
+                    <th class="bg-light">예약자 전화번호</th>
+                    <td th:text="${UserInfo.UserPhone}"></td>
+                </tr>
+                <tr>
+                    <th class="bg-light">예약자 주소</th>
+                    <td th:text="${UserInfo.UserAddress1}"></td>
+                </tr>
+                <tr>
+                    <th class="bg-light">예약자 주소 상세</th>
+                    <td th:text="${UserInfo.UserAddress2}"></td>
+                </tr>
+				<tr>
+				    <th class="alert alert-warning">예약 병원 이름</th>
+				    <td th:text="${hospital.H_Name}"></td>
+				</tr>
+				<tr>
+				    <th class="alert alert-warning">병원 주소</th>
+				    <td th:text="${hospital.H_Address}"></td>
+				</tr>								
+				<tr>
+					 <th class="alert alert-warning">병원 전화번호</th>
+					 <td th:text="${hospital.H_Phone_Number}"></td>
+				</tr>                
+                <tr>
+                    <th class="alert alert-success">예약 시간</th>
+                    <td th:text="${#temporals.format(AppointmentInfo.AppointmentTime, 'yyyy년 MM월 dd일 HH시 mm분')}"></td>
+                </tr>
+            </tbody>
+        </table>
+<hr>
+        <div class="text-right">
+            <a th:href="@{'/AppointmentPage/Delete?Id=' + ${AppointmentInfo.Id}}" onclick="confirmDelete(event)" class="btn btn-danger" style="float:left;">예약 취소</a>
+            
+            <a th:href="@{/AppointmentPage/List}" class="btn btn-secondary">목록</a>
+            <a th:href="@{/Home}" class="btn btn-secondary">홈으로</a>
+        </div>
+    </div>
+
+    <script src="/webjars/bootstrap/4.5.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

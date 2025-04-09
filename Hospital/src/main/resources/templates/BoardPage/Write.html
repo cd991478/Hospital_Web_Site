@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <title>글쓰기</title>
+    <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+	<style>
+
+		body {
+					    font-family: 'Pretendard', sans-serif;
+					}
+	 </style>
+  </head>
+  <body>
+  <div th:replace="fragments/navbar :: navbar"></div>
+    <header th:insert="/BoardPage/Header.html"></header>
+    
+    <div class="container">
+    <h3>글쓰기</h3>
+    	<hr>
+      <form action="/BoardPage/Write" method="POST">
+        <div class="form-group row">
+          <label for="inputTitle" class="col-sm-2 col-form-label"><strong>제목</strong></label>
+          <div class="col-sm-10">
+            <input type="text" name="title" class="form-control" id="inputTitle" required/>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label for="inputAuthor" class="col-sm-2 col-form-label"><strong>작성자</strong></label>
+          <div class="col-sm-10">
+            <input type="text" name="author" th:value="${UserName}" class="form-control" id="inputAuthor" required/>
+          </div>
+        </div>
+        <div class="form-group row">
+          <label for="inputContent" class="col-sm-2 col-form-label"><strong>내용</strong></label>
+          <div class="col-sm-10">
+            <textarea style="height:500px;" type="text" name="content" class="form-control" id="inputContent"></textarea>
+          </div>
+        </div>
+        <div>
+          <hr>
+          <div class="text-right">
+            <input class="btn btn-primary" type="submit" role="button" value="등록" style="float:left;margin-left:190px;"/>
+          <button type="button" class="btn btn-secondary" onclick="history.back();">뒤로가기</button>
+          <a class="btn btn-secondary" th:href="@{/BoardPage/List}" role="button">목록</a>
+          </div>
+        </div>
+      </form>
+    </div>
+    <script src="/webjars/jquery/3.5.1/jquery.min.js"></script>
+    <script src="/webjars/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+  </body>
+</html>

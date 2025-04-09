@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>환자 정보 트리</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background: #f9f9f9;
+        }
+        .container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        svg {
+            border: 1px solid #ddd;
+            background: white;
+        }
+        .node circle {
+            fill: #4CAF50;
+            stroke: #000;
+            stroke-width: 1.5px;
+            cursor: pointer;
+        }
+        .node text {
+            font-size: 12px;
+            fill: black;
+        }
+        .link {
+            fill: none;
+            stroke: #999;
+            stroke-width: 1.5px;
+        }
+        /* 툴팁 스타일 최적화 */
+        .tooltip {
+            position: absolute;
+            text-align: left;
+            width: auto;
+            max-width: 600px;
+            max-height: 500px;
+            padding: 12px;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            border-radius: 8px;
+            pointer-events: none;
+            opacity: 0;
+            overflow-y: auto; /* 스크롤 가능하도록 설정 */
+            white-space: normal;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>환자 정보 트리</h1>
+    <div class="container">
+        <svg width="800" height="600"></svg>
+    </div>
+
+    <!-- 툴팁 요소 -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        async function fetchPatientTree() {
+            try {
+                const response = await fetch("/api/patient/tree");
+                if (!response.ok) throw new Error("서버 응답 오류");
+
+                const treeData = await response.json();
+                if (!treeData || Object.keys(treeData).length === 0) {
+                    throw new Error("트리 데이터 없음");
+                }
+
+                renderTree(treeData);
+            } catch (error) {
+                console.error("트리 데이터를 불러오는 중 오류 발생:", error);
+            }
+        }
+
+        function renderTree(treeData) {
+            const width = 800, height = 600;
+            const svg = d3.select("svg"),
+                  g = svg.append("g").attr("transform", "translate(50,50)");
+
+            const hierarchyData = d3.hierarchy(treeData, d => [d.left, d.right].filter(n => n)); 
+            const treeLayout = d3.tree().size([width - 100, height - 150]);
+            const tree = treeLayout(hierarchyData);
+
+            // 툴팁 요소 가져오기
+            const tooltip = d3.select("#tooltip");
+
+            // 링크(선) 추가
+            g.selectAll(".link")
+                .data(tree.links())
+                .enter()
+                .append("path")
+                .attr("class", "link")
+                .attr("d", d3.linkVertical()
+                    .x(d => d.x)
+                    .y(d => d.y)
+                );
+
+            // 노드 추가
+            const node = g.selectAll(".node")
+                .data(tree.descendants())
+                .enter()
+                .append("g")
+                .attr("class", "node")
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+
+            node.append("circle")
+                .attr("r", 10)
+                .on("mouseover", function (event, d) {
+                    tooltip.style("opacity", 1)
+                        .html(`
+                            <div style="text-align: left; padding: 10px; background: rgba(0, 0, 0, 0.9); 
+                                        color: #fff; border-radius: 8px; max-width: 600px; max-height: 500px;
+                                        overflow-y: auto; white-space: normal; word-wrap: break-word;">
+										<b>이름:</b> ${d.data.P_Name || "알 수 없음"}<br>
+										<b>ID:</b> ${d.data.P_Id || "N/A"}<br>
+										<b>전화번호:</b> ${d.data.P_Phone || "N/A"}<br>
+										<b>주소:</b> ${d.data.P_Address1 || "N/A"} ${d.data.P_Address2 || ""}<br>
+										<b>성별:</b> ${d.data.P_Gender === 0 ? "남":"여"}<br>
+										<b>🔹 증상 정보</b><br>
+										<b>- 감기:</b> ${d.data.P_Cough === 1 ? "유" : "무"}<br>
+										<b>- 설사:</b> ${d.data.P_Diarrhea === 1 ? "유" : "무"}<br>
+										<b>- 통증(두통/흉통/근육통 등):</b> ${d.data.P_Pain === 1 ? "유" : "무"}<br>
+										<b>- 콧물/코막힘:</b> ${d.data.P_Nose === 1 ? "유" : "무"}<br>
+										<b>- 진통제 복용:</b> ${d.data.P_TakingPill === 1 ? "유" : "무"}<br><br>
+
+										<b>🔹 위험 요소</b><br>
+										<b>- 고위험군 여부:</b> ${d.data.P_HighRiskGroup === 0 ? "59개월 이하의 소아": 
+															   d.data.P_HighRiskGroup === 1 ? "임산부" : 
+															   d.data.P_HighRiskGroup === 2 ? "폐질환" :
+															   d.data.P_HighRiskGroup === 3 ? "당뇨"  :
+                                                               d.data.P_HighRiskGroup === 4 ? "암환자" :
+															   d.data.P_HighRiskGroup === 5 ? "해당사항 없음":"알 수 없음"}<br>
+										<b>- 통증 자가척도:</b> ${d.data.P_VAS}<br>
+										<b>- 코로나 감염여부:</b> ${d.data.P_Covid19 == 1 ? "유" :d.data.P_Covid19 == 0?  "무":"모름"}<br>
+
+                            </div>
+                        `);
+
+                    // 툴팁 위치 조정 (화면 끝을 벗어나지 않도록)
+                    let tooltipWidth = tooltip.node().offsetWidth;
+                    let tooltipHeight = tooltip.node().offsetHeight;
+                    let pageWidth = window.innerWidth;
+                    let pageHeight = window.innerHeight;
+
+                    let x = event.pageX + 15;
+                    let y = event.pageY - 10;
+
+                    if (x + tooltipWidth > pageWidth) {
+                        x = event.pageX - tooltipWidth - 15;
+                    }
+                    if (y + tooltipHeight > pageHeight) {
+                        y = event.pageY - tooltipHeight - 10;
+                    }
+
+                    tooltip.style("left", `${x}px`).style("top", `${y}px`);
+                })
+                .on("mousemove", function (event) {
+                    let x = event.pageX + 15;
+                    let y = event.pageY - 10;
+                    let tooltipWidth = tooltip.node().offsetWidth;
+                    let tooltipHeight = tooltip.node().offsetHeight;
+                    let pageWidth = window.innerWidth;
+                    let pageHeight = window.innerHeight;
+
+                    if (x + tooltipWidth > pageWidth) {
+                        x = event.pageX - tooltipWidth - 15;
+                    }
+                    if (y + tooltipHeight > pageHeight) {
+                        y = event.pageY - tooltipHeight - 10;
+                    }
+
+                    tooltip.style("left", `${x}px`).style("top", `${y}px`);
+                })
+                .on("mouseout", function () {
+                    tooltip.style("opacity", 0);
+                });
+
+            node.append("text")
+                .attr("dy", -15)
+                .attr("text-anchor", "middle")
+                .text(d => `${d.data.P_Id || "N/A"}: ${d.data.P_Name || "이름 없음"}`);
+        }
+
+        window.onload = fetchPatientTree;
+    </script>
+</body>
+</html>
+

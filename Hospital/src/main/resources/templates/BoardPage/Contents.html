@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8">
+    <title>공지사항</title>
+    <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <style>
+		body {
+			    font-family: 'Pretendard', sans-serif;
+			}
+	</style>
+	<script>
+    function confirmDelete(event) {
+      if (!confirm("해당 글을 정말 삭제하시겠습니까?")) {
+        event.preventDefault();
+        return false;
+      }
+      return true;
+    }
+  </script>
+  </head>
+  <body>
+    <div th:replace="fragments/navbar :: navbar"></div>
+ <header th:insert="/BoardPage/Header.html"></header>
+    <div class="container mt-4">
+      <h3>공지사항</h3>
+      <hr>
+      <div class="card">
+        <div class="card-body">
+          <h4 class="card-title" th:text="${Board.Title}"></h4>
+          <h6 class="card-subtitle text-muted text-right">
+            작성자: <span th:text="${Board.Author}"></span>　　
+            작성일: <span th:text="${#temporals.format(Board.CreatedDate, 'yyyy-MM-dd HH:mm')}"></span>　　
+            수정일: <span th:text="${#temporals.format(Board.ModifiedDate, 'yyyy-MM-dd HH:mm')}"></span>
+          </h6>
+          <hr>
+          <p class="card-text" th:text="${Board.Content}"></p>
+        </div>
+      </div>
+
+      <div class="mt-3 text-right">
+      	<div th:if="${UserId == 'admin'}" class="col-auto">
+          <a class="btn btn-primary" th:href="@{'/BoardPage/Edit?Id=' + ${Board.Id}}" role="button" style="float:left;">수정</a>
+          <a class="btn btn-danger" th:href="@{'/BoardPage/Delete?Id=' + ${Board.Id}}" onclick="confirmDelete(event)" role="button" style="float:left;margin-left:10px;">삭제</a>
+        </div>
+        <a class="btn btn-secondary" th:href="@{/BoardPage/List}" role="button">목록으로</a>
+      </div>
+    </div>
+
+    <script src="/webjars/jquery/3.5.1/jquery.min.js"></script>
+    <script src="/webjars/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>병원 전체 목록</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+       <!--  카카오 지도 API 로드  -->
+    <script type="text/javascript" 
+        src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2e9e13d9828d100f6d488ab7d8cf5a82&libraries=services" >
+    </script>
+	<style>
+		body {
+			    font-family: 'Pretendard', sans-serif;
+			}
+	   	th,td{
+	   		min-width: 90px;
+	   	}
+	   	.custom-thead{
+	   		background-color:#fff3cd;
+	   	}
+	   	
+#mapModal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1050; /* 모달이 다른 요소보다 위로 */
+    background: #fff;
+    padding: 15px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    width: 600px; /* 지도 크기 확대 */
+    height: 500px;
+    overflow: hidden;
+}
+#mapModal .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: red;
+    color: white;
+    border: none;
+    padding: 7px 12px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+    z-index: 1100; /* 지도보다 위로 배치 */
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+        #closeMap { position: absolute; top: 5px; right: 5px; }
+        
+	</style>
+    <script>
+    function CheckLogin() {
+      alert("로그인 후 이용할 수 있습니다.");
+    }
+  </script>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+    <header th:insert="/BoardPage/Header.html"></header>
+	<div class="container-fluid mt-5">
+	  <h1 class="text-center">병원 전체 목록</h1>
+	  <hr>
+<div class="container d-flex justify-content-center align-items-center">
+    <form id="search" th:action="@{/AllHospitalList}" method="get" class="w-100">
+        <div class="row justify-content-center align-items-end">
+            <!-- 진료 과목 선택 -->
+            <div class="col-md-5">
+                <label for="H_Categorie"><strong>* 진료 과목</strong></label>
+                <select id="H_Categorie" name="H_Categorie" class="form-control">
+                    <option value="" disabled>진료 과목을 선택하세요</option>
+                    <option value="내과" th:selected="${H_Categorie == '내과'}">내과</option>
+                    <option value="소아" th:selected="${H_Categorie == '소아'}">소아과</option>
+                    <option value="정형" th:selected="${H_Categorie == '정형'}">정형외과</option>
+                    <option value="산부인" th:selected="${H_Categorie == '산부인과'}">산부인과</option>
+                    <option value="피부" th:selected="${H_Categorie == '피부'}">피부과</option>
+                    <option value="이비인후" th:selected="${H_Categorie == '이비인후'}">이비인후과</option>
+                    <option value="한의원" th:selected="${H_Categorie == '한의원'}">한의원</option>
+                    <option value="성형" th:selected="${H_Categorie == '성형'}">성형외과</option>
+                    <option value="비뇨" th:selected="${H_Categorie == '비뇨'}">비뇨의학과</option>
+                    <option value="가정의학과" th:selected="${H_Categorie == '가정의학과'}">가정의학과</option>
+                    <option value="건강검진" th:selected="${H_Categorie == '건강검진'}">건강검진</option>
+                </select>
+            </div>
+
+            <!-- 지역 선택 -->
+            <div class="col-md-5">
+                <label for="H_Region"><strong>* 지역</strong></label>
+                <select id="H_Region" name="H_Region" class="form-control">
+                    <option value="" disabled>지역을 선택하세요</option>
+                    <option value="달서구" th:selected="${H_Region == '달서구'}">달서구</option>
+                    <option value="동구" th:selected="${H_Region == '동구'}">동구</option>
+                    <option value="서구" th:selected="${H_Region == '서구'}">서구</option>
+                    <option value="수성구" th:selected="${H_Region == '수성구'}">수성구</option>
+                    <option value="남구" th:selected="${H_Region == '남구'}">남구</option>
+                    <option value="북구" th:selected="${H_Region == '북구'}">북구</option>
+                    <option value="달성군" th:selected="${H_Region == '달성군'}">달성군</option>
+                </select>
+            </div>
+
+            <!-- 검색 버튼 -->
+            <div class="col-md-2 text-center">
+                <button type="submit" class="btn btn-primary mt-4">검색</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+
+  
+        <div class="text-right">
+      		<a class="btn btn-secondary mr-2" onclick="history.back()">뒤로가기</a>
+      		<a class="btn btn-secondary" th:href="@{/Home}">홈으로</a>
+    	</div>
+    	
+        <div class="table-responsive" style="overflow-x: auto;">
+        <table class="table table-striped table-bordered mt-4 text-center">
+            <thead class="custom-thead">
+                <tr>
+                    <th style="min-width:75px;">지역</th>
+                    <th>병원이름</th>
+                    <th>분류</th>
+                    <th>카테고리</th>
+                    <th>총 병상</th>
+                    <th>일반병상</th>
+                    <th style="min-width:110px;" >정신과병상</th>
+                    <th>요양병상</th>
+                    <th style="min-width:130px;" >중환자실병상</th>
+                    <th>격리병상</th>
+                    <th>무균병상</th>
+                    <th style="min-width:200px;">전화</th>
+                    <th>주소</th>
+                    <th>지도</th>
+                </tr>
+            </thead>
+         <tbody>
+            <tr th:each="hospital : ${D_HospitalList}">
+				<td th:text="${hospital.H_Region}"></td>
+				<td th:text="${hospital.H_Name}"></td>
+				<td th:text="${hospital.H_Department}"></td>
+				<td th:text="${hospital.H_Categorie}"></td>
+				<td th:text="${hospital.Bed_Total}"></td>
+				<td th:text="${hospital.Bed_General}"></td>
+				<td style="min-width:110px;" th:text="${hospital.Bed_Psy}"></td>
+				<td th:text="${hospital.Bed_Nursing}"></td>
+				<td style="min-width:130px;" th:text="${hospital.Bed_Intensive}"></td>
+				<td th:text="${hospital.Bed_Isolation}"></td>
+				<td th:text="${hospital.Bed_Clean}"></td>
+				<td th:text="${hospital.H_Phone_Number}"></td>
+                <td th:text="${hospital.H_Address}"></td>
+                <td>
+    			<button type="button" class="btn btn-primary" 
+      				  th:attr="onclick=|showMap(${hospital.H_Latitude}, ${hospital.H_Longitude}, '${hospital.H_Name}')|">
+       				  지도 보기
+   				</button>
+				</td>
+            </tr>
+        </tbody>
+        </table>
+        </div>
+    </div>
+  <hr>
+   <!-- 페이지네이션 -->
+<div class="d-flex justify-content-center mt-4" th:if="${D_HospitalList != null}">
+  <ul class="pagination">
+<!-- 이전 페이지 버튼 -->
+<li class="page-item" th:classappend="${currentPage == 0} ? 'disabled' : ''">
+  <a class="page-link" th:href="@{/AllHospitalList(page=${currentPage - 1}, H_Categorie=${H_Categorie}, H_Region=${H_Region})}" aria-label="Previous">
+    <span aria-hidden="true">&laquo;</span>
+  </a>
+</li>
+
+<!-- 페이지 번호 링크 -->
+<th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+  <li class="page-item" th:classappend="${i == currentPage} ? 'active' : ''">
+    <a class="page-link" th:href="@{/AllHospitalList(page=${i}, H_Categorie=${H_Categorie}, H_Region=${H_Region})}" th:text="${i + 1}"></a>
+  </li>
+</th:block>
+
+<!-- 다음 페이지 버튼 -->
+<li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled' : ''">
+  <a class="page-link" th:href="@{/AllHospitalList(page=${currentPage + 1}, H_Categorie=${H_Categorie}, H_Region=${H_Region})}" aria-label="Next">
+    <span aria-hidden="true">&raquo;</span>
+  </a>
+</li>
+
+
+  </ul>
+</div>
+<!-- 지도 모달 -->
+<div id="mapModal">
+    <button class="close-btn" onclick="closeMap()">닫기</button>
+    <div id="map" style="width: 100%; height: 100%;"></div>
+</div>
+
+
+
+<!-- ✅ 지도 초기화 -->
+<script>
+    window.onload = function () {
+        if (typeof kakao !== "undefined" && kakao.maps) {
+            console.log("카카오 API 로드 완료!");
+            initMap(); 
+        } else {
+            console.error("카카오 API 로드 실패!");
+        }
+    };
+
+    function initMap() {
+        kakao.maps.load(function() {
+            var mapContainer = document.getElementById('map');
+            var mapOption = { 
+                center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 시청 좌표
+                level: 3
+            }; 
+            var map = new kakao.maps.Map(mapContainer, mapOption);
+        });
+    }
+
+function showMap(hospitalLat, hospitalLng, hospitalName) {
+    if (typeof kakao === "undefined" || !kakao.maps) {
+        alert("카카오맵 API가 로드되지 않았습니다. 페이지를 새로고침 해주세요.");
+        return;
+    }
+
+    kakao.maps.load(function () {
+        var mapModal = document.getElementById('mapModal');
+        mapModal.style.display = 'block';
+
+        var mapContainer = document.getElementById('map');
+        mapContainer.innerHTML = ""; // 지도 초기화
+
+        var mapOption = {
+            center: new kakao.maps.LatLng(hospitalLat, hospitalLng), // 병원 위치 기준
+            level: 3
+        };
+
+        var map = new kakao.maps.Map(mapContainer, mapOption);
+
+        // **병원 마커**
+        var hospitalMarker = new kakao.maps.Marker({
+            position: new kakao.maps.LatLng(hospitalLat, hospitalLng),
+            map: map
+        });
+
+        var hospitalInfoWindow = new kakao.maps.InfoWindow({
+            content: `<div style="
+        	padding: 5px;
+       		white-space: nowrap; 
+        	overflow: hidden;
+        	text-overflow: ellipsis;
+        	max-width: 200px;
+    ">🏥 ${hospitalName}</div>`
+        });
+        hospitalInfoWindow.open(map, hospitalMarker);
+
+        // **지도 영역 조정**
+        var bounds = new kakao.maps.LatLngBounds();
+        bounds.extend(new kakao.maps.LatLng(hospitalLat, hospitalLng));
+        map.setBounds(bounds);
+
+        setTimeout(() => {
+            map.relayout();
+            map.setBounds(bounds);
+        }, 300);
+    });
+}
+
+   
+
+    function closeMap() {
+        document.getElementById('mapModal').style.display = 'none';
+    }
+</script>
+    <!-- Bootstrap JS (optional for interactive components) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>에러 메타 분석 대시보드</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, #f3f4f6, #dfe9f3);
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        canvas {
+            max-width: 100%;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>에러 메타 분석 대시보드</h1>
+        <p id="totalErrors">총 에러 개수: <strong>0</strong></p>
+        
+        <div class="card">
+            <h2>가장 많이 발생한 예외 유형</h2>
+            <canvas id="errorTypeChart"></canvas>
+        </div>
+        
+        <div class="card">
+            <h2>가장 에러가 많이 발생한 클래스</h2>
+            <canvas id="errorClassChart"></canvas>
+        </div>
+
+        <div class="card">
+            <h2>에러 상세 정보</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>예외 유형</th>
+                        <th>패키지</th>
+                        <th>코드 줄</th>
+                    </tr>
+                </thead>
+                <tbody id="errorDetailsTable">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function fetchErrorData() {
+            const response = await fetch("/api/errors");
+            const errorLogs = await response.json();
+            
+            document.getElementById("totalErrors").innerHTML = `총 에러 개수: <strong>${errorLogs.length}</strong>`;
+            
+            const errorTypeCounts = {};
+            const classCounts = {};
+            const errorLabels = [];
+            const errorValues = [];
+            const errorDetailsTable = document.getElementById("errorDetailsTable");
+            errorDetailsTable.innerHTML = "";
+            
+            errorLogs.forEach(log => {
+                errorTypeCounts[log.exceptionClass] = (errorTypeCounts[log.exceptionClass] || 0) + 1;
+                classCounts[log.className] = (classCounts[log.className] || 0) + 1;
+                
+                const row = `<tr>
+                    <td>${log.exceptionClass}</td>
+                    <td>${log.packageName}</td>
+                    <td>${log.lineNumber}</td>
+                </tr>`;
+                errorDetailsTable.innerHTML += row;
+            });
+
+            // 데이터 정리 (라벨과 값 분리)
+            Object.entries(errorTypeCounts).forEach(([key, value]) => {
+                errorLabels.push(key);
+                errorValues.push(value);
+            });
+
+            const ctx1 = document.getElementById('errorTypeChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: errorLabels.map((_, index) => `Error ${index + 1}`), // X축 라벨 숨기기
+                    datasets: [{
+                        label: '에러 발생 횟수',
+                        data: errorValues,
+                        backgroundColor: '#4F46E5',
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (tooltipItems) => errorLabels[tooltipItems[0].dataIndex], // 툴팁에 예외 유형 표시
+                                label: (tooltipItem) => `발생 횟수: ${tooltipItem.raw}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: false // X축 라벨 숨기기
+                        },
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            const ctx2 = document.getElementById('errorClassChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(classCounts),
+                    datasets: [{
+                        data: Object.values(classCounts),
+                        backgroundColor: ['#E63946', '#4F46E5', '#FF9900'],
+                    }]
+                },
+                options: { responsive: true }
+            });
+        }
+
+        window.onload = fetchErrorData;
+    </script>
+</body>
+</html>

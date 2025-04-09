@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Tree</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        .node circle {
+            fill: #3182bd;
+            stroke: #fff;
+            stroke-width: 3px;
+        }
+        .node text {
+            font: 12px sans-serif;
+            fill: #333;
+            text-anchor: middle;
+        }
+        .link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 2px;
+        }
+    </style>
+</head>
+<body>
+    <svg width="1000" height="800"></svg> <!-- 트리를 그릴 SVG 공간 -->
+
+    <script>
+        // 트리 구조를 반환하는 서버 API 호출
+        fetch('/PatientInfo/GetPatientTree')  // 서버에서 트리 구조를 반환한다고 가정
+            .then(response => response.json())
+            .then(data => {
+                const root = d3.hierarchy(data, d => d.left ? [d.left, d.right] : []);
+                const treeLayout = d3.tree().size([800, 500]);
+                treeLayout(root);
+
+                const svg = d3.select("svg");
+                const g = svg.append("g").attr("transform", "translate(50,50)");
+
+                // 부모-자식 관계를 연결하는 선 그리기
+                g.selectAll(".link")
+                    .data(root.links())
+                    .enter().append("line")
+                    .attr("class", "link")
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                // 노드 그리기
+                const node = g.selectAll(".node")
+                    .data(root.descendants())
+                    .enter().append("g")
+                    .attr("class", "node")
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+
+                node.append("circle").attr("r", 10); // 노드 원 그리기
+                node.append("text").attr("dy", -15).text(d => d.data.P_Id); // P_Id 표시
+            });
+    </script>
+</body>
+</html>

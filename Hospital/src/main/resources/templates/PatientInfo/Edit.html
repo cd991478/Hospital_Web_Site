@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>COVID-19 문진표 수정</title>
+  <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <style>
+     body {
+                  font-family: 'Pretendard', sans-serif;
+              }
+    </style>
+  <script>
+    function validateForm(event) {
+      var age = document.getElementsByName("P_RegNum")[0].value;
+      var phone = document.getElementsByName("P_Phone")[0].value;
+      
+      var agePattern = /^[0-9]+$/;
+      
+      if(!agePattern.test(age)) {
+        alert("주민번호 앞 6자리는 숫자만 입력해주세요.");
+        event.preventDefault();
+        return false;
+      }
+      if(phone.includes('-')) {
+        alert("전화 번호는 숫자만 입력해주세요.");
+        event.preventDefault();
+        return false;
+      }
+      
+      return true;
+    }
+    
+ // 슬라이더의 값을 실시간으로 표시
+    document.addEventListener("DOMContentLoaded", function() {
+      const vasSlider = document.getElementById('VAS');
+      const vasValue = document.getElementById('VAS_value');
+
+      // 슬라이더 초기 값 표시
+      vasValue.textContent = vasSlider.value;
+
+      // 슬라이더 값이 바뀔 때마다 값을 표시
+      vasSlider.addEventListener("input", function() {
+          vasValue.textContent = this.value; // 슬라이더 값이 변경될 때마다 표시
+      });
+    });
+  </script>
+
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/PatientInfo/Header.html"></header>
+  <div class="container mt-4" style="max-width:500px;">
+    <h3>COVID-19 문진표 수정</h3>
+    <hr>
+
+    <form method="POST" th:object="${PatientInfoEdit}" th:action="@{/PatientInfo/Edit}" onsubmit="return validateForm(event)">
+      <div class="form-group">
+        <label for="P_UserId"><strong>* 아이디</strong></label>
+        <input type="text" class="form-control" id="P_UserId" name="P_UserId" th:value="*{P_UserId}" disabled required/>
+      </div>
+
+      <div class="form-group">
+        <label for="P_Name"><strong>* 이름</strong></label>
+        <input type="text" class="form-control" id="P_Name" name="P_Name" th:value="*{P_Name}" required/>
+      </div>
+
+      <div class="form-group">
+        <label><strong>* 성별</strong></label><br>
+        <div class="form-check form-check-inline">
+        <input class = "form-check-input" type="radio" name="P_Gender" value="1" th:checked="*{P_Gender == 1}"  required/> 여성　
+        <input class = "form-check-input" type="radio" name="P_Gender" value="0" th:checked="*{P_Gender == 0}" /> 남성
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="P_RegNum"><strong>* 주민번호 앞 6자리</strong></label>
+        <input type="text" class="form-control" id="P_RegNum" name="P_RegNum" th:value="*{P_RegNum}" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="P_Phone"><strong>* 전화번호</strong></label>
+        <input type="text" class="form-control" id="P_Phone" name="P_Phone" th:value="*{P_Phone}" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="P_Address1"><strong>* 도로명 주소</strong></label>
+        <input type="text" class="form-control" id="P_Address1" name="P_Address1" th:value="*{P_Address1}" placeholder="예) 대구시 수성구 달구벌대로 1234-12" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="P_Address2"><strong>* 주소 상세</strong></label>
+        <input type="text" class="form-control" id="P_Address2" name="P_Address2" th:value="*{P_Address2}" placeholder="예) OO빌라 101호" required/>
+      </div>
+<hr>
+      <div class="form-group">
+        <label><strong>* 약(감기약/해열제 등) 복용 유무</strong></label><br>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Pill_1" name="P_TakingPill" value="1" th:checked="*{P_TakingPill == 1}" required/>
+          <label class="form-check-label" for="Pill_1">유</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Pill_2" name="P_TakingPill" value="0" th:checked="*{P_TakingPill == 0}"/>
+          <label class="form-check-label" for="Pill_2">무</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label><strong>* 주요 증상</strong></label><br>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="P_Nose" value="1" th:checked="*{P_Nose == 1}"/>
+          <label class="form-check-label">콧물 또는 코막힘　　　　</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="P_Cough" value="1" th:checked="*{P_Cough == 1}"/>
+          <label class="form-check-label">기침 또는 가래</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="P_Pain" value="1" th:checked="*{P_Pain == 1}"/>
+          <label class="form-check-label">통증(두통/흉통/근육통 등)</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="P_Diarrhea" value="1" th:checked="*{P_Diarrhea == 1}"/>
+          <label class="form-check-label">설사</label>
+        </div>
+      </div>
+     <div class="form-group">
+        <label><strong>* Covid-19 감염 유무</strong></label><br>
+        <div class="form-check form-check-inline">
+             <input class="form-check-input" type="radio" id="positive" name="P_Covid19" value="1" th:checked="*{P_Covid19 == 1}">
+             <label class="form-check-label" for="positive">유</label>
+        </div>
+  
+         <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="negative" name="P_Covid19" value="0" th:checked="*{P_Covid19 == 0}">
+          <label class="form-check-label" for="negative">무</label>
+        </div>
+  
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="non_info" name="P_Covid19" value="2" th:checked="*{P_Covid19 == 2}" required checked>
+          <label class="form-check-label" for="non_info">모름</label>
+        </div>
+   </div>
+      <div class="form-group">
+        <label><strong>* 고위험군 분류</strong></label><br>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Group_1" name="P_HighRiskGroup" value="0" th:checked="*{P_HighRiskGroup == 'Under59'}" required/>
+          <label class="form-check-label" for="Group_1">59개월 이하의 소아</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Group_2" name="P_HighRiskGroup" value="1" />
+          <label class="form-check-label" for="Group_2">임산부</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Group_3" name="P_HighRiskGroup" value="2"/>
+          <label class="form-check-label" for="Group_3">만성 폐질환</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Group_4" name="P_HighRiskGroup" value="3"/>
+          <label class="form-check-label" for="Group_4">당뇨</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Group_5" name="P_HighRiskGroup" value="4" />
+          <label class="form-check-label" for="Group_5">암환자</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Group_6" name="P_HighRiskGroup" value="5" />
+          <label class="form-check-label" for="Group_6">해당사항 없음</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label><strong>* 시각통증척도 (통증수치) </strong></label><br>
+        <input style="width:420px;margin-left:20px;" th:value="*{P_VAS}" type="range" id="VAS" name="P_VAS" min="0" max="10" value="0" step="1" required />
+       <span id="VAS_value" th:text="*{P_VAS}" style="font-size:22px;margin-left:1px;">0</span>
+         <div>
+            <img src="/images/VAS_Indicator 391x106.png" style="width:100%">
+         </div>
+      <br>
+        
+        <!-- <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_0" name="P_VAS" value="0" th:checked="*{P_VAS == 0}" required/>
+          <label class="form-check-label" for="VAS_0">0</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_1" name="P_VAS" value="1" th:checked="*{P_VAS == 1}"/>
+          <label class="form-check-label" for="VAS_1">1</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_2" name="P_VAS" value="2" th:checked="*{P_VAS == 2}"/>
+          <label class="form-check-label" for="VAS_2">2</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_3" name="P_VAS" value="3" th:checked="*{P_VAS == 3}"/>
+          <label class="form-check-label" for="VAS_3">3</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_4" name="P_VAS" value="4" th:checked="*{P_VAS == 4}"/>
+          <label class="form-check-label" for="VAS_4">4</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_5" name="P_VAS" value="5" th:checked="*{P_VAS == 5}"/>
+          <label class="form-check-label" for="VAS_5">5</label>
+        </div>
+        <br>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_6" name="P_VAS" value="6" th:checked="*{P_VAS == 6}"/>
+          <label class="form-check-label" for="VAS_6">6</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_7" name="P_VAS" value="7" th:checked="*{P_VAS == 7}"/>
+          <label class="form-check-label" for="VAS_7">7</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_8" name="P_VAS" value="8" th:checked="*{P_VAS == 8}"/>
+          <label class="form-check-label" for="VAS_8">8</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_9" name="P_VAS" value="9" th:checked="*{P_VAS == 9}"/>
+          <label class="form-check-label" for="VAS_9">9</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="VAS_10" name="P_VAS" value="10" th:checked="*{P_VAS == 10}"/>
+          <label class="form-check-label" for="VAS_10">10</label>
+        </div> -->
+      </div>
+
+      <div class="form-group">
+        <label><strong>* 개인 정보 수집 동의</strong></label><br>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Info_1" name="P_Agreement" value="1" th:checked="*{P_Agreement == 1}" disabled/>
+          <label class="form-check-label" for="Info_1">예</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" id="Info_2" name="P_Agreement" value="0" th:checked="*{P_Agreement == 0}" disabled/>
+          <label class="form-check-label" for="Info_2">아니오</label>
+        </div>
+      </div>
+<hr>
+      <div class="form-group text-right">
+        <input type="submit" class="btn btn-primary" style="float:left;" value="수정" />
+        
+        <button type="button" class="btn btn-secondary" onclick="history.back();">뒤로가기</button>
+        <a class="btn btn-secondary" th:href="@{/Home}" >홈으로</a>
+
+      </div>
+    </form>
+  </div>
+<br><br>
+  <script src="/webjars/jquery/3.5.1/jquery.min.js"></script>
+  <script src="/webjars/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>회원가입</title>
+  <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+  <script>
+    function CheckUserId() {
+        var userId = document.getElementById('UserId').value;
+
+        // 아이디 형식 검사
+        var idPattern = /^(?=[a-zA-Z0-9]{4,12}$)(?![0-9]{4,12}$)[a-zA-Z0-9]+$/;
+        if (!idPattern.test(userId)) {
+            document.getElementById('IdError').style.color = "red";
+            document.getElementById('IdError').textContent = "사용할 수 없는 아이디입니다.";
+            return; // 형식이 잘못되면 중복 확인을 진행하지 않음
+        }
+
+        // Ajax 요청
+        fetch('/UserPage/CheckUserId', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId: userId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            var errorElement = document.getElementById('IdError');
+            if (data.status === 'error') {
+                errorElement.style.color = "red";
+                errorElement.textContent = "아이디가 이미 존재합니다.";
+            } else {
+                errorElement.style.color = "green";
+                errorElement.textContent = "사용 가능한 아이디입니다.";
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('IdError').textContent = "서버 오류가 발생했습니다.";
+        });
+    }
+
+    function CheckForm(event) {
+        var id = document.getElementsByName("UserId")[0].value;
+        var pw = document.getElementsByName("UserPw")[0].value;
+        var pwc = document.getElementsByName("UserPwc")[0].value; 
+        var name = document.getElementsByName("UserName")[0].value;
+        var regnum = document.getElementsByName("UserRegNum")[0].value;
+        var phone = document.getElementsByName("UserPhone")[0].value;
+
+        var idPattern = /^(?=[a-zA-Z0-9]{4,12}$)(?![0-9]{4,12}$)[a-zA-Z0-9]+$/;
+        var pwPattern = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,20}$/;
+        var namePattern = /^[가-힣]{2,4}$/; //2-4자리 이름 허용
+        var phonePattern = /^\d{11}$/; // 11자리 숫자만 허용
+        var regnumPattern = /^\d{6}$/; // 6자리 숫자만 허용
+
+       
+        if (!idPattern.test(id)) { // 아이디 검증
+            alert("아이디는 4~12자 사이의 영어와 숫자 조합만 가능합니다. 숫자만 포함된 아이디는 사용할 수 없습니다.");
+            event.preventDefault();
+            return false;
+        }     
+        if (!pwPattern.test(pw)) {
+            alert("비밀번호는 8~20자리이며, 영문자/숫자를 포함해야 합니다.");// 비밀번호 검증
+            event.preventDefault();
+            return false;
+        }      
+        if (pw !== pwc) {
+            alert("비밀번호가 일치하지 않습니다. 다시 입력해주세요.");// 비밀번호 확인
+            event.preventDefault();
+            return false;
+        }
+        if (!namePattern.test(name)) {
+            alert("이름은 2~4글자 사이의 한글만 입력 가능합니다.");// 이름 검증
+            event.preventDefault();
+            return false;
+        }
+        if (!regnumPattern.test(regnum)) {
+            alert("주민번호는 앞 6자리 숫자만 입력해주세요.");// 주민번호 검증
+            event.preventDefault();
+            return false;
+        }
+        if (!phonePattern.test(phone)) {
+            alert("전화 번호는 숫자 11자리로만 입력해주세요.\n예) 01012341234");// 전화번호 검증
+            event.preventDefault();
+            return false;
+        }
+        return true;
+    }
+  </script>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/UserPage/Header.html"></header>
+  <div class="container mt-5" style="max-width: 400px;">
+    <h3 class="text-center">회원가입</h3>
+    <hr>
+
+    <form method="POST" id="SignUpForm" onsubmit="return CheckForm(event)">
+      <div class="form-group">
+        <label for="UserId">* 아이디</label>
+        <div class="input-group">
+          <input type="text" name="UserId" id="UserId" class="form-control" placeholder="4~12자리 영어/숫자" required/>
+          <div class="input-group-append">
+            <button type="button" class="btn btn-secondary" id="CheckIdButton" onclick="CheckUserId()">중복확인</button>
+          </div>
+        </div>
+        <small id="IdError" class="form-text"></small>
+      </div>
+
+      <div class="form-group">
+        <label for="UserPw">* 비밀번호</label>
+        <input type="password" name="UserPw" class="form-control" placeholder="8~20자리 영어+숫자" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="UserPwc">* 비밀번호 확인</label>
+        <input type="password" name="UserPwc" class="form-control" placeholder="비밀번호 다시 입력" required/>
+      </div>
+	<hr>
+      <div class="form-group">
+        <label for="UserName">* 이름</label>
+        <input type="text" name="UserName" class="form-control" placeholder="예) 홍길동" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="UserRegNum">* 주민등록번호 앞자리</label>
+        <input type="text" name="UserRegNum" class="form-control" placeholder="예) 921014" required/>
+      </div>
+
+      <div class="form-group">
+        <label>* 성별</label><br>
+        <div class="form-check form-check-inline">
+          <input type="radio" name="UserGender" value="1" class="form-check-input" required/>
+          <label class="form-check-label">여성</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input type="radio" name="UserGender" value="0" class="form-check-input"/>
+          <label class="form-check-label">남성</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="UserPhone">* 휴대폰 번호</label>
+        <input type="text" name="UserPhone" class="form-control" placeholder="예) 01012341234" required/>
+      </div>
+
+	  <div class="form-group">
+	      <label for="UserAddress1">* 주소</label>
+	      <div class="input-group">
+	          <input type="text" name="UserAddress1" id="UserAddress1" class="form-control" placeholder="주소 검색 버튼을 눌러주세요" required readonly/>
+	          <div class="input-group-append">
+	              <button type="button" class="btn btn-secondary" onclick="execDaumPostcode()">주소 검색</button>
+	          </div>
+	      </div>
+	  </div>
+
+      <div class="form-group">
+        <label for="UserAddress2">* 상세 주소</label>
+        <input type="text" name="UserAddress2" class="form-control" placeholder="예) xx빌라 101호" required/>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">회원가입</button>
+    </form>
+
+    <div th:if="${Error}" class="mt-3 text-danger">
+      <p th:text="${Error}"></p>
+    </div>
+
+    <div class="mt-3 text-center">
+      <a class="btn btn-link" th:href="@{/UserPage/Login}" role="button">취소</a>
+      <a class="btn btn-link" th:href="@{/Home}" role="button">홈으로</a>
+    </div>
+  </div>
+  <br><br><br>
+  <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+  <script>
+      function execDaumPostcode() {
+          new daum.Postcode({
+              oncomplete: function(data) {
+                  var fullAddr = ''; 
+                  var extraAddr = '';
+
+                  if (data.userSelectedType === 'R') {
+                      fullAddr = data.roadAddress;
+                  } else {
+                      fullAddr = data.jibunAddress;
+                  }
+
+                  if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
+                      extraAddr += data.bname;
+                  }
+
+                  if (data.buildingName !== '' && data.apartment === 'Y') {
+                      extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+                  }
+
+                  if (extraAddr !== '') {
+                      fullAddr += ' (' + extraAddr + ')';
+                  }
+
+                  document.getElementById('UserAddress1').value = fullAddr;
+              }
+          }).open();
+      }
+  </script>
+
+  <script src="/webjars/jquery/3.5.1/jquery.min.js"></script>
+  <script src="/webjars/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+</body>
+</html>

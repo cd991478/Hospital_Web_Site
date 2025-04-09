@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>에러 로그 조회</title>
+    <style>
+        /* 기존 테이블 스타일 유지 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff; /* 기존의 파란색 헤더 유지 */
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        /* 버튼 스타일 */
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            top: 50%;
+            width: 60%;
+            height: 60%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-close {
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            background: none;
+        }
+        .modal-body {
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+    </style>
+    <script>
+        async function fetchErrorLogs() {
+            const response = await fetch("/api/errors");
+            const errorLogs = await response.json();
+
+            const tableBody = document.getElementById("errorTableBody");
+            tableBody.innerHTML = "";
+
+            errorLogs.forEach(log => {
+                const row = `<tr>
+                    <td>${log.id}</td>
+                    <td>${log.timestamp}</td>
+                    <td>${log.packageName}</td>
+                    <td>${log.className}</td>
+                    <td>${log.methodName}</td>
+                    <td>${log.lineNumber}</td>
+                    <td>${log.exceptionClass}</td>
+                    <td>${log.message}</td>
+                    <td><button onclick="showStackTrace('${log.stackTrace.replace(/\n/g, '\\n')}')">보기</button></td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function showStackTrace(stackTrace) {
+            document.getElementById("stackTraceContent").textContent = stackTrace.replace(/\\n/g, '\n'); // 개행 처리
+            document.getElementById("stackTraceModal").style.display = "block";
+            document.getElementById("overlay").style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("stackTraceModal").style.display = "none";
+            document.getElementById("overlay").style.display = "none";
+        }
+
+        window.onload = fetchErrorLogs;
+    </script>
+</head>
+<body>
+    <h2>에러 로그 조회</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>발생 시간</th>
+                <th>패키지</th>
+                <th>클래스</th>
+                <th>메서드</th>
+                <th>코드 라인</th>
+                <th>예외 클래스</th>
+                <th>메시지</th>
+                <th>스택 트레이스</th>
+            </tr>
+        </thead>
+        <tbody id="errorTableBody"></tbody>
+    </table>
+
+    <!-- 모달 및 오버레이 -->
+    <div id="overlay" class="overlay" onclick="closeModal()"></div>
+    <div id="stackTraceModal" class="modal">
+        <div class="modal-header">
+            <h3>스택 트레이스</h3>
+            <button class="modal-close" onclick="closeModal()">✖</button>
+        </div>
+        <div class="modal-body">
+            <pre id="stackTraceContent">에러 스택 트레이스 내용이 여기에 표시됩니다.</pre>
+        </div>
+    </div>
+</body>
+</html>

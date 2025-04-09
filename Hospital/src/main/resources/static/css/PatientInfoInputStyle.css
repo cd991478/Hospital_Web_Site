@@ -1,0 +1,42 @@
+@charset "UTF-8";
+/* 기본 입력 텍스트 박스 스타일 */
+.input-box {
+    width: 300px; /* 기본 너비 */
+    margin-bottom: 10px; /* 아래쪽 간격 */
+}
+
+/* 전화번호 입력 박스 스타일 */
+.phone-box {
+    width: 200px; /* 전화번호에 맞는 너비 */
+    margin-bottom: 10px; /* 아래쪽 간격 */
+}
+
+/* 주민번호 입력 박스 스타일 */
+.regnum-box {
+    width: 120px; /* 주민번호 박스 너비 */
+    margin-bottom: 10px; /* 아래쪽 간격 */
+}
+
+/* 버튼 스타일 */
+.btn-save {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-save:hover {
+    background-color: #0056b3;
+}
+
+/* 레이블 및 필드 간격 */
+.form-group {
+    margin-bottom: 15px;
+}
+
+/* 라디오 버튼 및 체크박스 정렬 */
+.form-check-inline {
+    margin-right: 10px;
+}

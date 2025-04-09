@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>예약 목록</title>
+    <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+	<style>
+	body {
+						    font-family: 'Pretendard', sans-serif;
+						}
+	    </style>
+    
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="~{AppointmentPage/Header}"></header>
+    <div class="container mt-5" style="max-width:600px; color:black;">
+        <h3 class="text-center">예약 목록</h3>
+        <hr>
+        <p class="text-center font-weight-bold" th:text="|${UserName}(${UserId})님이 등록하신 예약 목록입니다.|"></p>
+      
+        <div th:if="${AppointmentList != null}" class="alert alert-primary text-center">
+            예약 번호를 클릭하면 조회가 가능합니다.
+        </div>
+        <div th:if="${AppointmentList == null}" class="alert alert-danger text-center">
+            등록된 예약이 없습니다.
+        </div>
+
+        <hr>
+
+        <table class="table table-hover text-center">
+            <thead class="thead-light">
+                <tr>
+                    <th>예약번호</th>
+                    <th>병원이름</th>
+                    <th>예약등록날짜</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="AppointmentInfo : ${AppointmentList}">
+                    <td>
+                        <a th:text="'#' + ${AppointmentInfo.Id}" 
+                           th:href="@{/AppointmentPage/Result/{Id}(Id=${AppointmentInfo.Id})}"
+                           class="btn btn-link">
+                        </a>
+                    </td>
+                    <td th:text="${AppointmentInfo.hospitalname}"></td>
+                    <td th:text="${#temporals.format(AppointmentInfo.createdTime, 'yyyy년 MM월 dd일 HH시 mm분 ss초')}"></td>
+                </tr>
+            </tbody>
+        </table>
+<hr>
+        <!-- 페이지네이션 -->
+		<div class="d-flex justify-content-center mt-4" th:if="${AppointmentList != null}">
+		  <ul class="pagination">
+		    <!-- 이전 페이지 버튼 -->
+		    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled' : ''">
+		      <a class="page-link" th:href="@{/AppointmentPage/List(page=${currentPage - 1})}" aria-label="Previous">
+		        <span aria-hidden="true">&laquo;</span>
+		      </a>
+		    </li>
+
+		    <!-- 페이지 번호 링크 -->
+		    <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+		      <li class="page-item" th:classappend="${i == currentPage} ? 'active' : ''">
+		        <a class="page-link" th:href="@{/AppointmentPage/List(page=${i})}" th:text="${i + 1}"></a>
+		      </li>
+		    </th:block>
+
+		    <!-- 다음 페이지 버튼 -->
+		    <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled' : ''">
+		      <a class="page-link" th:href="@{/AppointmentPage/List(page=${currentPage + 1})}" aria-label="Next">
+		        <span aria-hidden="true">&raquo;</span>
+		      </a>
+		    </li>
+		  </ul>
+		</div>
+</div>
+<hr>
+        <div class="text-right mt-4">
+            <a th:href="@{/AppointmentPage/Input}" class="btn btn-success" style="float:left;">병원예약</a>
+            <a th:href="@{/Home}" class="btn btn-secondary">홈으로</a>
+        </div>
+    </div>
+    
+<br><br>
+    <script src="/webjars/bootstrap/4.5.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

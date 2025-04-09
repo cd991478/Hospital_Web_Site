@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>관리자 메뉴</title>
+<link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<style>
+	body {
+						    font-family: 'Pretendard', sans-serif;
+						}
+</style>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/Header.html"></header>
+<div class="container mt-5 text-center">
+<h3>관리자 메뉴</h3>
+</div>
+<hr>
+<div class="container mt-4 text-center">
+      <a class="btn btn-primary" th:href="@{/index.html}" role="button">에러 메타 분석</a><br><br>
+      <a class="btn btn-primary" th:href="@{/error_logging_page.html}" role="button">에러 로그</a><br><br>
+      <a class="btn btn-primary" th:href="@{/patient_tree.html}" role="button">트리 정보</a><br><br>
+	  <a class="btn btn-primary" th:href="@{/patient_tree_search.html}" role="button">트리 검색</a><br><br>  <!-- ✅ 추가 -->
+      <a class="btn btn-primary" th:href="@{/api/patient/tree}" role="button">트리 로그</a><br><br>
+</div>
+<hr>
+<div class="container mt-4 text-center">
+
+      <a class="btn btn-danger" th:href="@{/api/cache/clear}" role="button">트리 캐시 클리어</a><br><br>
+</div>
+<hr>
+</body>
+</html>

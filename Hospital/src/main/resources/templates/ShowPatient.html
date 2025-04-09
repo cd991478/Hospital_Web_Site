@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대구 COVID-19 환자 분포</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <h2>대구 지역 COVID-19 환자 분포</h2>
+    <svg id="map" width="800" height="600"></svg>
+
+    <script>
+        const width = 800;
+        const height = 600;
+        const svg = d3.select("#map").attr("width", width).attr("height", height);
+
+        const center = [128.6014, 35.8714]; 
+        const scale = 150000; 
+
+		const projection = d3.geoMercator()
+		    .center([128.6014, 35.8714]) // ✅ 대구 중심 좌표
+		    .scale(50000) // ✅ 기존보다 확대하여 표시
+		    .translate([width / 2, height / 2]); // ✅ SVG 중앙 정렬
+
+        const pathGenerator = d3.geoPath().projection(projection);
+
+		// ✅ 대구 행정구역 JSON 로드
+		d3.json("/data/daegu.json") // ✅ `/static/` 제외
+		       .then(geoData => {
+		           console.log("대구 지도 데이터 로드 성공:", geoData);
+
+		           svg.selectAll("path")
+		               .data(geoData.features)
+		               .enter()
+		               .append("path")
+		               .attr("d", pathGenerator)
+		               .attr("fill", "#ddd")
+		               .attr("stroke", "#666");
+
+		           // ✅ COVID-19 환자 데이터 로드
+				   fetch("/Chart/ShowPatientData")
+				       .then(response => response.json())
+				       .then(data => {
+				           console.log("✅ Fetched Data:", data);
+
+				           svg.selectAll("circle")
+				               .data(data)
+				               .enter()
+				               .append("circle")
+				               .attr("cx", d => {
+				                   let lon = Number(d.pLongitude); // ✅ 숫자로 변환
+				                   let lat = Number(d.pLatitude);  // ✅ 숫자로 변환
+				                   console.log("Before Projection:", lon, lat);
+
+				                   let coords = projection([lat, lon]); // ✅ 위도/경도 순서 확인!
+				                   console.log("After Projection:", coords);
+
+				                   return coords && !isNaN(coords[0]) ? coords[0] : 0; // ✅ NaN 방지
+				               })
+				               .attr("cy", d => {
+				                   let lon = Number(d.pLongitude);
+				                   let lat = Number(d.pLatitude);
+				                   let coords = projection([lat, lon]); // ✅ 위도/경도 순서 확인!
+				                   return coords && !isNaN(coords[1]) ? coords[1] : 0; // ✅ NaN 방지
+				               })
+				               .attr("r", 4)
+				               .attr("fill", "red")
+				               .attr("opacity", 0.7);
+				       })
+				       .catch(error => console.error("🚨 데이터 로딩 실패:", error));
+
+		       })
+		       .catch(error => console.error("지도 데이터 로딩 실패:", error)); // ✅ 에러 확인
+
+    </script>
+</body>
+</html>

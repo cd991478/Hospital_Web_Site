@@ -1,0 +1,103 @@
+<div th:fragment="navbar">
+  <nav class="navbar navbar-expand-lg bg-light" style="font-weight: bold;">
+    <a th:href="@{/Home}">
+      <img src="/images/병원로고.jpg" style="height:40px;width:40px;margin-left:10px;">
+    </a>
+    <a class="navbar-brand" th:href="@{/Home}" style="margin-left:20px; margin-right:150px; max-width:300px; ">
+      <span style="font-size:25px;">대구 통합 의료 서비스　　　</span>
+    </a>
+
+    <div class="container text-center" style="margin-right:20%;">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item dropdown">
+          <a href="#" class="nav-link">COVID-19 문진표</a>
+        <div class="dropdown-menu" th:if="${UserId == null}">
+            <a href="#" onclick="CheckLogin()" class="dropdown-item">COVID-19 문진표작성</a>
+            <a href="#" onclick="CheckLogin()" class="dropdown-item">COVID-19 문진표조회</a>
+          </div>
+          <div class="dropdown-menu" th:if="${UserId != null}">
+            <a th:href="@{/PatientInfo/Input}" class="dropdown-item">COVID-19 문진표작성</a>
+            <a th:href="@{/PatientInfo/List}" class="dropdown-item">COVID-19 문진표조회</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a href="#" class="nav-link">예약</a>
+          <div class="dropdown-menu" th:if="${UserId == null}">
+            <a href="#" onclick="CheckLogin()" class="dropdown-item">병원예약</a>
+            <a href="#" onclick="CheckLogin()" class="dropdown-item">예약조회</a>
+          </div>
+          <div class="dropdown-menu" th:if="${UserId != null}">
+            <a th:href="@{/AppointmentPage/Input}" class="dropdown-item">병원예약</a>
+            <a th:href="@{/AppointmentPage/List}" class="dropdown-item">예약조회</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a href="#" class="nav-link">정보</a>
+          <div class="dropdown-menu">
+            
+            <a th:href="@{/AllHospitalList}" class="dropdown-item">전체병원조회</a>
+            <a th:href="@{/BoardPage/List}" class="dropdown-item">공지사항</a>
+            <a th:href="@{/BoardPage/FAQ}" class="dropdown-item">자주묻는질문</a>
+          </div>
+        </li>
+		<li class="nav-item dropdown">
+			<a href="#" class="nav-link">통계자료</a>
+			<div class="dropdown-menu">
+				<a th:href="@{/Chart/ShowPatientRegion}" class="dropdown-item">COVID-19 감염자 분포</a>
+					<a th:href="@{/Chart/ShowPatient}" class="dropdown-item">COVID-19 문진표 통계</a>
+					<a th:href="@{/Chart/DetailPatient}" class="dropdown-item">COVID-19 문진표 세부 통계</a>
+					<a th:href="@{/Chart/ShowHospitalRegion}" class="dropdown-item">대구 병원 지역별 통계</a>
+			</div>
+		</li>
+        <li class="nav-item dropdown" th:if="${UserId == null}">
+          <a th:href="@{/UserPage/Login}" class="nav-link">로그인</a>
+          <div class="dropdown-menu">
+            <a th:href="@{/UserPage/Login}" class="dropdown-item">로그인</a>
+            <a th:href="@{/UserPage/SignUp}" class="dropdown-item">회원가입</a>
+            <a th:href="@{/UserPage/FindUserId}" class="dropdown-item">아이디 찾기</a>
+            <a th:href="@{/UserPage/FindUserPw}" class="dropdown-item">비밀번호 찾기</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown" th:if="${(UserId != null) and (UserId != 'admin')}">
+          <a href="#" class="nav-link">회원메뉴</a>
+       <div class="dropdown-menu">
+              <a th:href="@{/UserPage/EditUserInfo}" class="dropdown-item">마이페이지</a>
+              <a th:href="@{/UserPage/Logout}" class="dropdown-item">로그아웃</a>
+       </div>
+      </li>
+
+        <li class="nav-item dropdown" th:if="${(UserId != null) and (UserId == 'admin')}">
+          <a th:href="@{/AdminPage/Menu}" class="nav-link">관리자메뉴</a>
+          <div class="dropdown-menu">
+            <a th:if="${UserId == 'admin'}" th:href="@{/AdminPage/Menu}" class="dropdown-item">관리자메뉴</a>
+            <a th:href="@{/UserPage/EditUserInfo}" class="dropdown-item">관리자정보</a>
+            <a th:href="@{/UserPage/Logout}" class="dropdown-item">로그아웃</a>
+          </div>
+        </li>
+        
+      </ul>
+    </div>
+    <div th:if="${UserId == null}" style="width:300px;" th:text="|로그인 해주세요|">　</div>
+    <div th:if="${UserId != null}" style="width:300px;margin-right:50px;margin-left:50px;" 
+		th:text="'환영합니다,　' + ${UserName} + ' (' + ${UserId} + ') 님'"></div>
+  </nav>
+  <style>
+    .navbar-nav { display: flex; justify-content: space-between; width: 100%; }
+    .navbar-nav .nav-item { position: relative; }
+    .dropdown-menu { display: none; position: absolute; top: 90%; left: 0; 
+					background-color: #f8f9fa; border-radius: 5px; min-width: 150px; }
+    .nav-item:hover .dropdown-menu { display: block; }
+    .nav-link { font-size: 22px; padding: 5px 10px; border-radius: 5px; 
+				background-color: #f8f9fa; color: black; 
+				text-decoration: none; text-align: center; }
+    .dropdown-item { padding: 10px 20px; background-color: #f8f9fa; 
+					color: black; text-decoration: none; }
+    .dropdown-item:hover { background-color: lightblue; color: black; }
+    .nav-item:hover .nav-link { background-color: lightblue; color: black; }
+  </style>
+  <script>
+    function CheckLogin() {
+      alert("로그인 후 이용할 수 있습니다.");
+    }
+  </script>
+</div>
