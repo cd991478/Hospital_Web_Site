@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  
+  <meta charset="UTF-8">
+  <title>대구 통합 의료 서비스</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+  <style>
+	body {
+	    font-family: 'Pretendard', sans-serif;
+	}
+	.right-section {
+	    width: 100%;
+	    max-width: 450px; /* 공지사항, FAQ와 같은 너비 유지 */
+	}
+
+	.info-box {
+	    background-color: #f8f9fa;
+	    border-radius: 12px;
+	    padding: 15px; /*  패딩 최적화 */
+	    margin-bottom: 15px; /*  박스 사이 여백 조정 */
+	    box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.1);
+	}
+
+	.info-title {
+	    font-size: 1.3rem; /*  제목 크기 조정 */
+	    font-weight: bold;
+	    margin-bottom: 10px;
+	    display: flex;
+	    justify-content: space-between;
+	}
+
+	.more-link {
+	    font-size: 1rem;
+	    color: #007bff;
+	    text-decoration: none;
+	}
+
+	.more-link:hover {
+	    text-decoration: underline;
+	}
+
+	.info-box ul {
+	    font-size: 1.1rem;
+	    list-style: none;
+	    padding-left: 0;
+	}
+
+	/* ✅ 의료 속보 박스 정렬 */
+	#spot-news-box {
+	    margin-top: 10px; /*  FAQ와의 간격 조정 */
+	}
+
+	/*  모바일 반응형 조정 */
+	@media (max-width: 768px) {
+	    .right-section {
+	        max-width: 100%;
+	    }
+	}
+
+  </style>
+
+</head>
+<body>
+  <!-- 공통 Navbar 불러오기 -->
+  
+  <div th:replace="~{fragments/navbar :: navbar}"></div>
+    <header th:insert="~{/Header.html}"></header>
+	<div class="container mt-4">
+	      <div class="row">
+	          <!-- 왼쪽: 이미지 슬라이드 배너 -->
+	          <div class="col-md-7">
+	              <div id="mainCarousel" class="carousel slide" data-ride="carousel">
+	                  <div class="carousel-inner">
+	                      <div class="carousel-item active">
+	                          <img src="/images/감염 예방 수칙 600x600.png" class="d-block w-100" alt="배너1">
+	                      </div>
+	                      <div class="carousel-item">
+	                          <img src="/images/코로나 예방 접종 안내 600x600.png" class="d-block w-100" alt="배너2">
+	                      </div>
+	                      <div class="carousel-item">
+	                          <img src="/images/공공보건의료교육.png" class="d-block w-100" alt="배너3">
+	                      </div>
+	                  </div>
+	                  <a class="carousel-control-prev" href="#mainCarousel" role="button" data-slide="prev">
+	                      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+	                  </a>
+	                  <a class="carousel-control-next" href="#mainCarousel" role="button" data-slide="next">
+	                      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+	                  </a>
+	              </div>
+	          </div>
+	
+   <!-- <div>
+    <img src="/images/홈 구성요소.png">
+    </div>-->
+	<!-- 오른쪽: 공지사항 & FAQ -->
+	<div class="col-md-5 right-section">
+	    <!-- 공지사항 -->
+	    <div class="info-box">
+	        <div class="info-title">
+	            <span>📢 공지사항</span>
+	            <a th:href="@{/BoardPage/List}" class="more-link">+더보기</a>
+	        </div>
+	        <ul class="list-unstyled">
+	            				<li th:each="post : ${recentPosts}">
+				    <a th:href="@{/BoardPage/Contents/{id}(id=${post.id})}" th:text="${post.title}" class="d-block"></a>
+				</li>
+				<p th:if="${#lists.isEmpty(recentPosts)}">게시글이 없습니다.</p>
+	        </ul>
+	        <p th:if="${#lists.size(@boardService.RecentBoardList()) == 0}">게시글이 없습니다.</p>
+	    </div>
+
+	    <!-- 자주 묻는 질문 (FAQ) -->
+	    <div class="info-box">
+	        <div class="info-title">
+	            <span>❓ 자주 묻는 질문</span>
+	            <a th:href="@{/BoardPage/FAQ}" class="more-link">+더보기</a>
+	        </div>
+	        <ul class="list-unstyled">
+	            <li><a th:href="@{/BoardPage/FAQ}" class="d-block">진료 예약은 어떻게 하나요?</a></li>
+	            <li><a th:href="@{/BoardPage/FAQ}" class="d-block">병원 운영시간은?</a></li>
+	            <li><a th:href="@{/BoardPage/FAQ}" class="d-block">코로나 검사는 어디서 받을 수 있나요?</a></li>
+	        </ul>
+	    </div>
+
+	    <!-- ✅ 의료 속보 (FAQ 바로 아래 정렬) -->
+	    <div class="info-box" id="spot-news-box">
+	        <div class="info-title">
+	            <span>📰 의료 속보</span>
+	        </div>
+	        <ul class="list-unstyled" id="spot-news-list">
+	            <li th:each="news : ${spotNewsList}">
+	                <strong th:text="${news.title}"></strong> <br>
+	                <small th:text="${news.publishedAt}"></small>
+	                <p th:text="${news.content}"></p>
+	                <hr>
+	            </li>
+	        </ul>
+	        <p th:if="${#lists.isEmpty(spotNewsList)}">의료 속보가 없습니다.</p>
+	    </div>
+	</div>
+
+
+	<script>
+	document.addEventListener("DOMContentLoaded", function () {
+	    fetch("/Home")  // ✅ SpotNews API 호출
+	        .then(response => response.json())
+	        .then(data => {
+	            const newsContainer = document.getElementById("spot-news-list");
+	            newsContainer.innerHTML = ""; // 기존 내용 초기화
+
+	            if (data.length === 0) {
+	                newsContainer.innerHTML = "<p>의료 속보가 없습니다.</p>";
+	                return;
+	            }
+
+	            data.forEach(news => {
+	                let newsItem = `
+	                    <li>
+	                        <strong>${news.title}</strong> <br>
+	                        <small>${news.publishedAt}</small>
+	                        <p>${news.content}</p>
+	                    </li>
+	                    <hr>
+	                `;
+	                newsContainer.innerHTML += newsItem;
+	            });
+	        })
+	        .catch(error => console.error("Error fetching spot news:", error));
+	});
+	</script>
+
+
+  <script src="/webjars/jquery/3.5.1/jquery.min.js"></script>
+  <script src="/webjars/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+</body>
+</html>

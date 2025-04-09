@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>COVID-19 문진표 세부 통계</title>
+<script src="https://d3js.org/d3.v3.min.js"></script>
+    <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
+    <style>
+       
+       .axis text{
+          font-family : 'Arial', sans-serif;
+          font-size:11px;
+       }
+       .axis path,
+       .axis line{
+         fill:none;
+         stroke:black;
+       }
+       .grid line {
+           stroke: black;
+           stroke-opacity: 0.7;
+           shape-rendering: crispEdges;
+      }
+    </style>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/BoardPage/Header.html"></header>
+
+<div class="container mt-5 text-center" style="max-width:100%">
+       <h3>COVID-19 문진표 세부 통계</h3>
+       <hr>
+       <form method="POST" th:action="@{/Chart/DetailPatient}">
+       <div class="form-group">
+            <label><strong>* 성별</strong></label><br>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="Gender" value="F" th:checked="${Gender == 'F'}">
+                <label class="form-check-label">여성</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="Gender" value="M" th:checked="${Gender == 'M'}">
+                <label class="form-check-label">남성</label>
+            </div>
+        </div>
+
+        <!-- 연령대 선택 -->
+        <div class="form-group">
+            <label><strong>* 연령대</strong></label><br>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="0to9" th:checked="${AgeRange == '0to9'}">
+                <label class="form-check-label">10세 이하</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="10to19" th:checked="${AgeRange == '10to19'}">
+                <label class="form-check-label">10대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="20to29" th:checked="${AgeRange == '20to29'}">
+                <label class="form-check-label">20대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="30to39" th:checked="${AgeRange == '30to39'}">
+                <label class="form-check-label">30대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="40to49" th:checked="${AgeRange == '40to49'}">
+                <label class="form-check-label">40대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="50to59" th:checked="${AgeRange == '50to59'}">
+                <label class="form-check-label">50대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="60to69" th:checked="${AgeRange == '60to69'}">
+                <label class="form-check-label">60대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="70to99" th:checked="${AgeRange == '70to99'}">
+                <label class="form-check-label">70대 이상</label>
+            </div>
+        </div>
+         <div class="form-group text-center">
+        <button type="submit" class="btn btn-primary">조건 적용</button>
+        <button type="button" class="btn btn-primary" onclick="ResetSelect()">선택 해제</button>
+        
+      </div>
+         </form>
+         <div th:if="${stats != null}">
+         <hr>
+         <b>검색 조건 : </b>
+         <b th:if="${AgeRange == '0to9'}"> 10세 이하 </b>
+         <b th:if="${AgeRange == '10to19'}"> 10대 </b>
+         <b th:if="${AgeRange == '20to29'}"> 20대 </b>
+         <b th:if="${AgeRange == '30to39'}"> 30대 </b>
+         <b th:if="${AgeRange == '40to49'}"> 40대 </b>
+         <b th:if="${AgeRange == '50to59'}"> 50대 </b>
+         <b th:if="${AgeRange == '60to69'}"> 60대 </b>
+         <b th:if="${AgeRange == '70to99'}"> 70대 이상 </b>
+         
+         <b th:if="${Gender == 'F'}">여성</b>
+         <b th:if="${Gender == 'M'}">남성</b>
+         
+         <b th:if="${AgeRange == null and Gender == null}"> 없음</b>
+         <div th:text="|환자 수 : ${stats.Total}명|"></div>
+    <br>
+    <div th:if="${Gender == null}">
+    <hr>
+        <h5>성별</h5>
+        <svg class="alert alert-secondary"  height="300" id="genderChart"></svg>
+        
+    </div>
+    <hr>
+    <div th:if="${AgeRange == null}">
+    <hr>
+        <h5>연령대</h5>
+        <svg class="alert alert-secondary" height="300" id="ageChart"></svg>
+        
+    </div>
+    
+    
+    <hr>
+    <div>
+    
+        <h5>감기약 복용 여부</h5>
+        <svg class="alert alert-secondary" height="300" id="pillChart"></svg>
+    </div>
+    <hr>
+    <div>
+        <h5>증상</h5>
+        <svg class="alert alert-secondary" height="300" id="symptomChart"></svg>
+    </div>
+    <hr>
+    <div>
+        <h5>고위험군</h5>
+        <svg class="alert alert-secondary"  height="300" id="riskGroupChart"></svg>
+    </div>
+    <hr>
+    <div>
+        <h5>통증수치 (VAS)</h5>
+        <svg class="alert alert-secondary" height="300" id="VASChart"></svg>
+    </div>
+    
+    <div>
+       <h5 th:text="'통증수치 평균 : ' + ${#numbers.formatDecimal(stats.VAS_Avg, 1, 2)}"></h5>
+
+
+   </div>
+
+    <hr>
+    </div>
+    <div class="form-group text-right">
+        <button type="button" class="btn btn-primary" onclick="downloadAsImage();" style="float:left;">다운로드</button>
+        <button type="button" class="btn btn-secondary" onclick="history.back();">뒤로가기</button>
+        <a class="btn btn-secondary" th:href="@{/Home}" role="button">홈으로</a>
+    </div>
+    </div>
+    <br><br>
+     
+
+<script th:inline="javascript">
+        // Thymeleaf에서 전달한 데이터를 JavaScript로 받기
+        var count = /*[[${stats}]]*/ {};
+
+        var genderData = [
+            { label: "남성", value: count.Male, color: "lightskyblue" },
+            { label: "여성", value: count.Female, color: "pink" }
+        ];
+        var ageData = [
+            { label:"10대 이하", value: count.Age_0to9, color: "rgb(255,255,127)"},   // lightyellow → #FFFFE0
+            { label:"10대", value: count.Age_10to19, color: "rgb(255,255,127)"},
+            { label:"20대", value: count.Age_20to29, color: "#ADD8E6"},  // lightblue → #ADD8E6
+            { label:"30대", value: count.Age_30to39, color: "#ADD8E6"},
+            { label:"40대", value: count.Age_40to49, color: "#90EE90"},   // lightgreen → #90EE90
+            { label:"50대", value: count.Age_50to59, color: "#90EE90"},
+            { label:"60대", value: count.Age_60to69, color: "#FFB6C1"},    // lightpink → #FFB6C1
+            { label:"70대 이상", value: count.Age_70to99, color: "#FFB6C1"},
+        ];
+
+        var pillData = [
+            { label: "복용", value: count.TakingPill_Yes, color: "lightgreen" },
+            { label: "미복용", value: count.TakingPill_No, color: "lightcoral" }
+        ];
+
+        var symptomData = [
+            { label: "콧물/코막힘", value: count.Nose, color: "skyblue" },
+            { label: "기침/가래", value: count.Cough, color: "lightyellow" },
+            { label: "통증", value: count.Pain, color: "#FF7F7F" },
+            { label: "설사", value: count.Diarrhea, color: "brown" },
+            { label: "해당없음", value: count.Nothing, color: "lightgray" }
+        ];
+
+        var riskGroupData = [
+            { label: "소아", value: count.HighRiskGroup_Under59, color: "yellow" },
+            { label: "임산부", value: count.HighRiskGroup_Pregnancy, color: "pink" },
+            { label: "폐질환", value: count.HighRiskGroup_Lung, color: "gray" },
+            { label: "당뇨", value: count.HighRiskGroup_Diebete, color: "orange" },
+            { label: "암환자", value: count.HighRiskGroup_Cancer, color: "purple" },
+            { label: "해당없음", value: count.HighRiskGroup_None, color: "lightgray" }
+        ];
+      
+        var VASData = [
+            {label: "0단계", value: count.VAS_0, color: "#7CFC00"},   // 초록색 (라이트 그린)
+            {label: "1단계", value: count.VAS_1, color: "#90EE90"},   // 연한 초록
+            {label: "2단계", value: count.VAS_2, color: "#ADFF2F"},   // 그린옐로우
+            {label: "3단계", value: count.VAS_3, color: "#FFFF00"},   // 노란색
+            {label: "4단계", value: count.VAS_4, color: "#FFD700"},   // 금색
+            {label: "5단계", value: count.VAS_5, color: "#FF8C00"},   // 다크 오렌지
+            {label: "6단계", value: count.VAS_6, color: "#FF6347"},   // 토마토 (오렌지+빨강)
+            {label: "7단계", value: count.VAS_7, color: "#FF4500"},   // 오렌지 레드
+            {label: "8단계", value: count.VAS_8, color: "#FF0000"},   // 빨간색
+            {label: "9단계", value: count.VAS_9, color: "#DC143C"},   // 크림슨 (진한 빨강)
+            {label: "10단계", value: count.VAS_10, color: "#8B0000"}  // 다크 레드
+        ];
+
+        
+        
+        function drawBarChart(svgId, data, maxValue) {
+            var svg = d3.select(`#${svgId}`);
+           
+            var YBarWidth = 50;
+            
+            if(data.length >= 8){
+               var barWidth = 880 / data.length;
+                var gap = 200 / data.length;
+                var chartWidth = barWidth * data.length + gap * data.length + 35 + YBarWidth*2;  // 차트 전체 너비 계산
+            }
+            else{
+               var barWidth = 150;
+               var gap = 30;
+               var chartWidth = barWidth * data.length + gap * data.length + 15 + YBarWidth*2; // 차트 전체 너비 계산
+               
+            }
+            var maxBarHeight = 250; // 최대 막대 높이
+            
+            // 차트의 width 동적 설정
+            svg.attr("width", chartWidth);
+
+            // scaleFactor는 데이터의 최대값에 따라 동적으로 계산
+            var scaleFactor = maxBarHeight / maxValue * 0.8;
+
+            // 데이터가 모두 0일 경우 비율을 1로 설정
+            if (maxValue === 0) {
+                scaleFactor = 1;
+            }
+
+            var startY = maxBarHeight;
+            
+            var index = data.length;
+            var size = new Array(index); // index만큼 크기의 배열을 생성
+
+            /* // 그리드(격자) 추가
+            var gridSpacing = 27.5; // 그리드의 간격 (세로, 가로)
+
+            // 수평 그리드 선 추가 (격자)
+            for (var y = maxBarHeight; y > 0; y -= gridSpacing) {
+                svg.append("line")
+                    .attr("x1", 35)  // 시작 X 좌표
+                    .attr("y1", y)   // Y 좌표
+                    .attr("x2", chartWidth-100)  // 끝 X 좌표
+                    .attr("y2", y)   // 끝 Y 좌표
+                    .attr("stroke", "black")
+                    .attr("stroke-width", 0.5);  // 점선 형태
+            } */
+            
+         // 세로로 막대그래프 생성
+            svg.selectAll("rect")
+                .data(data)
+                .enter()
+                .append("rect")
+                .attr("x", function(d, i) { return YBarWidth + i * (barWidth + gap); }) // X 위치
+                .attr("y", function(d) { return startY - d.value * scaleFactor; }) // Y 위치 (값에 따라 위치)
+                .attr("width", barWidth) // 막대 너비
+                .attr("height", function(d, i) {return size[i]=d.value * scaleFactor;})  // 막대 높이
+                .attr("fill", function(d) { return d.color; })
+            .on("mouseover",function(){
+               d3.select(this)
+                  .style("fill","white");
+            })
+            .on("mouseout",function(){
+               d3.select(this)
+                  .style("fill",function(d){return d.color;});
+            });
+         
+                
+                
+               var yScale = d3.scale.linear()
+                     .domain([0,maxValue+maxValue*0.25])
+                     .range([maxBarHeight,0]);
+                     
+                
+               
+            
+                  
+              svg.append("g")
+                       .attr("class","axis")
+                       .attr("transform","translate(36,0)")
+                       .call(
+                             d3.svg.axis()
+                               .scale(yScale)
+                               .orient("left")
+                          );
+              
+           svg.append("rect")
+               .attr("class","axis_x")
+               .attr("width",barWidth*data.length + gap*(data.length-1) +35)
+               .attr("height","1")
+               .attr("transform","translate(35,"+(maxBarHeight-0.5)+")");
+                 
+               
+           
+                  
+                  
+            // x축 레이블 추가 (항목 이름)
+            svg.selectAll("text.label")
+                .data(data)
+                .enter()
+                .append("text")
+                .attr("class", "label")
+                .attr("x", function(d, i) { return YBarWidth + i * (barWidth + gap) + barWidth / 2; }) // 막대의 중앙에 위치
+                .attr("y", startY + 20) // x축 아래에 위치
+                .attr("text-anchor", "middle")
+                .text(function(d) { return d.label; }) // 항목 이름
+                .style("font-size", "12px");
+
+            // y축 값 추가 (각각의 카운트)
+            svg.selectAll("text.value")
+                .data(data)
+                .enter()
+                .append("text")
+                .attr("class", "value")
+                .attr("x", function(d, i) { return YBarWidth + i * (barWidth + gap) + barWidth / 2; }) // 막대의 중앙에 위치
+                .attr("y", function(d, i) { 
+                      if(size[i] >= 230){
+                         return startY - d.value/20 * scaleFactor / 2 - 130;
+                      }
+                      else{
+                         return startY - d.value * scaleFactor - 10; 
+                      } // 값 위치 (막대 위쪽에 위치)   
+                })
+                .attr("text-anchor", "middle")
+                .text(function(d) { return d.value; }) // 카운트 값
+                .style("fill", "black")
+                .style("font-size", "14px");
+        }
+
+        // 각 차트에 대한 최대값을 구해서 동적으로 draw
+        function drawAllCharts() {
+            // 각 데이터의 최대값을 구해서 동적으로 비율을 계산
+             var maxGenderValue = d3.max(genderData, function(d) { return d.value; });
+             var maxAgeValue = d3.max(ageData, function(d) { return d.value; });
+            var maxPillValue = d3.max(pillData, function(d) { return d.value; });
+            var maxSymptomValue = d3.max(symptomData, function(d) { return d.value; });
+            var maxRiskGroupValue = d3.max(riskGroupData, function(d) { return d.value; });
+            var maxVASValue = d3.max(VASData, function(d) { return d.value; });
+
+            // 각 차트 그리기
+            drawBarChart("genderChart", genderData, maxGenderValue);
+            drawBarChart("ageChart", ageData, maxAgeValue);
+            drawBarChart("pillChart", pillData, maxPillValue);
+            drawBarChart("symptomChart", symptomData, maxSymptomValue);
+            drawBarChart("riskGroupChart", riskGroupData, maxRiskGroupValue/20);
+            drawBarChart("VASChart", VASData, maxVASValue);
+        }
+
+        // 차트 그리기 호출
+        drawAllCharts();
+      
+        function ResetSelect() {
+            // 체크박스 선택 해제
+            var CheckBox = document.querySelectorAll('input[type="checkbox"]');
+            CheckBox.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            // 라디오 버튼 선택 해제
+            var Radio = document.querySelectorAll('input[type="radio"]');
+            Radio.forEach(radio => {
+                radio.checked = false;
+            });
+        }
+    </script>
+</body>
+</html>

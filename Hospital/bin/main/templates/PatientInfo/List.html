@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>COVID-19 문진표 목록</title>
+  <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <style>
+  body {
+  				    font-family: 'Pretendard', sans-serif;
+  				}
+    </style>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/PatientInfo/Header.html"></header>
+  <div class="container mt-5" style="max-width:600px;color:black;">
+    <h3 class="text-center">COVID-19 문진표 목록</h3>
+    <hr>
+    <p class="text-center font-weight-bold" th:text="|${UserName}(${UserId})님이 등록하신 문진표 목록입니다.|"></p>
+    
+    <div th:if="${PatientInfoList != null}" class="alert alert-info text-center">
+      문진표 번호를 클릭하면 조회 및 수정이 가능합니다.
+    </div>
+    
+    <div th:if="${PatientInfoList == null}" class="alert alert-danger text-center">
+      등록된 문진표가 없습니다.
+    </div>
+
+    <hr>
+
+    <table class="table table-hover text-center">
+      <thead class="thead-light">
+        <tr>
+          <th>문진표번호</th>
+          <!-- <th>등록이름</th> -->
+          <th>등록일시</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="PatientInfo : ${PatientInfoList}">
+          <td>
+            <a th:text="'#' + ${PatientInfo.P_Id}" th:href="@{/PatientInfo/Result/{P_Id}(P_Id=${PatientInfo.P_Id})}" class="btn btn-link"></a>
+          </td>
+          <!-- <td th:text="${PatientInfo.P_Name}"></td> -->
+          <td th:text="${#temporals.format(PatientInfo.P_InsertDateTime, 'yyyy년 MM월 dd일 HH시 mm분 ss초')}"></td>
+        </tr>
+      </tbody>
+    </table>
+    <hr>
+    
+    
+<!-- 페이지네이션 -->
+<div class="d-flex justify-content-center mt-4" th:if="${PatientInfoList != null}">
+  <ul class="pagination">
+    <!-- 이전 페이지 버튼 -->
+    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled' : ''">
+      <a class="page-link" th:href="@{/PatientInfo/List(page=${currentPage - 1})}" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+      </a>
+    </li>
+
+    <!-- 페이지 번호 링크 -->
+    <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+      <li class="page-item" th:classappend="${i == currentPage} ? 'active' : ''">
+        <a class="page-link" th:href="@{/PatientInfo/List(page=${i})}" th:text="${i + 1}"></a>
+      </li>
+    </th:block>
+
+    <!-- 다음 페이지 버튼 -->
+    <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled' : ''">
+      <a class="page-link" th:href="@{/PatientInfo/List(page=${currentPage + 1})}" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+      </a>
+    </li>
+  </ul>
+</div>
+
+    
+    
+    <hr>
+
+    <div class="d-flex justify-content-between mt-4">
+      <a class="btn btn-primary" th:href="@{/PatientInfo/Input}" role="button">문진표 작성</a>
+      <a class="btn btn-secondary" th:href="@{/Home}" role="button">홈으로</a>
+    </div>
+  </div>
+
+  <br><br>
+
+  <script src="/webjars/jquery/3.5.1/jquery.min.js"></script>
+  <script src="/webjars/bootstrap/4.5.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

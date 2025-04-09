@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>인근 병원 목록</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <!--  카카오 지도 API 로드  -->
+    <script type="text/javascript" 
+        src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2e9e13d9828d100f6d488ab7d8cf5a82&libraries=services" 
+    ></script>
+
+    <style>
+/* ✅ 테이블 스타일 - 고정된 레이아웃 */
+table {
+    width: 100%;
+    table-layout: fixed; /* ✅ 칼럼 크기 고정 */
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+body {
+       font-family: 'Pretendard', sans-serif;
+   }
+/* ✅ 테이블 헤더 스타일 (병원 전체 목록과 동일하게 적용) */
+thead th {
+    position: sticky;
+    top: 0;
+    background-color: #fff3cd; /* 연한 노란색 */
+    font-weight: bold;
+    font-size: 14px; /* ✅ 병원 전체 목록과 동일한 크기 */
+    text-align: center;
+    padding: 8px; /* ✅ 동일한 패딩 값 */
+    z-index: 1000;
+    border-bottom: 1px solid #ddd;
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ✅ 테이블 본문 셀 스타일 */
+td {
+    text-align: center;
+    padding: 8px; /* ✅ 동일한 패딩 값 */
+    border: 1px solid #ddd;
+    font-size: 14px; /* ✅ 동일한 폰트 크기 */
+    white-space: nowrap; /* ✅ 내용 줄바꿈 방지 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ✅ 테이블 컨테이너 */
+.table-container {
+    max-height: 700px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+}
+
+/* ✅ 칼럼 크기 병원 전체 목록과 동일하게 조정 */
+th:nth-child(1), td:nth-child(1) { width: 5%; }  /* 선택 */
+th:nth-child(2), td:nth-child(2) { width: 10%; } /* 지역 */
+th:nth-child(3), td:nth-child(3) { width: 15%; } /* 병원이름 */
+th:nth-child(4), td:nth-child(4) { width: 10%; } /* 분류 */
+th:nth-child(5), td:nth-child(5) { width: 10%; } /* 카테고리 */
+th:nth-child(6), td:nth-child(6) { width: 8%; }  /* 총 병상 */
+th:nth-child(7), td:nth-child(7) { width: 8%; }  /* 일반병상 */
+th:nth-child(8), td:nth-child(8) { width: 8%; }  /* 정신과병상 */
+th:nth-child(9), td:nth-child(9) { width: 8%; }  /* 요양병상 */
+th:nth-child(10), td:nth-child(10) { width: 8%; } /* 중환자실병상 */
+th:nth-child(11), td:nth-child(11) { width: 8%; } /* 격리병상 */
+th:nth-child(12), td:nth-child(12) { width: 8%; } /* 무균병상 */
+th:nth-child(13), td:nth-child(13) { width: 10%; } /* 전화 */
+th:nth-child(14), td:nth-child(14) { width: 15%; } /* 주소 */
+th:nth-child(15), td:nth-child(15) { width: 10%; } /* 지도 보기 */
+
+/* ✅ 지도 모달 스타일 수정 */
+#mapModal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* ✅ 화면 중앙 배치 */
+    z-index: 1000;
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3); /* ✅ 더 부드러운 그림자 */
+    border-radius: 8px; /* ✅ 모서리 둥글게 */
+}
+
+/* ✅ 지도 크기 확대 */
+#map {
+    width: 600px; /* ✅ 기존보다 확대 */
+    height: 450px; /* ✅ 기존보다 확대 */
+}
+
+/* ✅ 닫기 버튼을 지도 우측 상단에 고정 (병원 전체 목록과 동일하게 변경) */
+#closeMap {
+    position: absolute;
+    top: 10px; 
+    right: 10px; 
+    background-color: #ff3333; /* ✅ 병원 전체 목록과 동일한 닫기 버튼 색상 */
+    color: white;
+    border: none;
+    width: 50px;
+    height: 30px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px; /* ✅ 모서리 둥글게 */
+    z-index: 1100; /* ✅ 지도보다 위로 배치 */
+    transition: 0.3s;
+}
+
+/* ✅ 닫기 버튼 호버 효과 */
+#closeMap:hover {
+    background-color: #cc0000; /* ✅ 호버 시 더 진한 빨간색 */
+}
+.card {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+}
+.btn-lg {
+    font-size: 1.1rem;
+}
+.form-control {
+    font-size: 1rem;
+}
+
+    </style>
+</head>
+<body>
+
+<!-- 네비게이션 바 -->
+<div th:replace="fragments/navbar :: navbar"></div>
+
+<!-- 헤더 -->
+<header th:insert="/PatientInfo/Header.html"></header>
+
+
+<!-- 페이지 컨텐츠 -->
+<div class="container-fluid mt-5">
+    <h1 class="text-center">인근 병원 목록</h1>
+
+    <!-- 버튼 메뉴 -->
+
+	<form id="run" th:action="@{/AppointmentPage/Reserve}" method="post">
+		<!-- 예약자 정보 및 버튼 그룹을 한 줄로 정렬 -->
+		<div class="card p-3 mb-4">
+		    <div class="row align-items-center">
+		        <!-- 예약자 이름 입력 -->
+		        <div class="col-md-3">
+		            <label for="patientName" class="mb-1"><strong>* 예약자 이름</strong></label>
+		            <input type="text" class="form-control" id="patientName" name="patientName" required>
+		        </div>
+
+		        <!-- 예약 일시 입력 -->
+		        <div class="col-md-3">
+		            <label for="appointmentTime" class="mb-1"><strong>* 예약 일시</strong></label>
+		            <input type="datetime-local" class="form-control" id="appointmentTime" name="appointmentTime" required>
+		        </div>
+
+		        <!-- 버튼 그룹 -->
+		        <div class="col-md-6 text-right">
+		            <button type="submit" class="btn btn-success btn-lg px-4 mr-2">예약하기</button>
+		            <button type="button" class="btn btn-secondary btn-lg mx-2" onclick="history.back()">⬅️ 뒤로가기</button>
+		            <a class="btn btn-secondary btn-lg" th:href="@{/}">홈으로</a>
+		        </div>
+		    </div>
+		</div>
+    <!-- 테이블 컨테이너 -->
+    <div class="table-container">
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>선택</th>
+                <th>지역</th>
+                <th>병원이름</th>
+                <th>분류</th>
+                <th>카테고리</th>
+                <th>총 병상</th>
+                <th>일반병상</th>
+                <th>정신과병상</th>
+                <th>요양병상</th>
+                <th>중환자실병상</th>
+                <th>격리병상</th>
+                <th>무균병상</th>
+                <th>전화</th>
+                <th>주소</th>
+                <th>지도 보기</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="Hospital : ${D_HospitalList}">
+                <td><input type="radio" name="selectedHospitals" th:value="${Hospital.H_Id}"></td>
+                <td th:text="${Hospital.H_Region}"></td>
+                <td th:text="${Hospital.H_Name}"></td>
+                <td th:text="${Hospital.H_Department}"></td>
+                <td th:text="${Hospital.H_Categorie}"></td>
+                <td th:text="${Hospital.Bed_Total}"></td>
+                <td th:text="${Hospital.Bed_General}"></td>
+                <td th:text="${Hospital.Bed_Psy}"></td>
+                <td th:text="${Hospital.Bed_Nursing}"></td>
+                <td th:text="${Hospital.Bed_Intensive}"></td>
+                <td th:text="${Hospital.Bed_Isolation}"></td>
+                <td th:text="${Hospital.Bed_Clean}"></td>
+                <td th:text="${Hospital.H_Phone_Number}"></td>
+                <td th:text="${Hospital.H_Address}"></td>
+				<td>
+				    <button type="button" class="btn btn-primary" 
+				        th:if="${Hospital.H_Latitude != null and Hospital.H_Longitude != null}"
+				        th:attr="onclick=|showMap(${Hospital.H_Latitude}, ${Hospital.H_Longitude}, '${Hospital.H_Name}', ${session.GeoAddressLatitude}, ${session.GeoAddressLongitude})|">
+				        지도 보기
+				    </button>
+				</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+</form>
+</div>
+
+
+
+<!-- 지도 모달 -->
+<div id="mapModal">
+    <button id="closeMap" onclick="closeMap()">닫기</button> <!-- ✅ 병원 전체 목록과 동일한 닫기 버튼 적용 -->
+    <div id="map"></div>
+</div>
+
+
+<!-- ✅ 지도 스크립트 -->
+<script>
+    function showMap(hospitalLat, hospitalLng, hospitalName, patientLat, patientLng) {
+        if (typeof kakao === "undefined" || !kakao.maps) {
+            alert("카카오맵 API가 로드되지 않았습니다. 페이지를 새로고침 해주세요.");
+            return;
+        }
+
+        kakao.maps.load(function () {
+            var mapModal = document.getElementById('mapModal');
+            mapModal.style.display = 'block';
+
+            var mapContainer = document.getElementById('map');
+            mapContainer.innerHTML = ""; // 지도 초기화
+
+            var mapOption = {
+                center: new kakao.maps.LatLng(hospitalLat, hospitalLng),
+                level: 3
+            };
+
+            var map = new kakao.maps.Map(mapContainer, mapOption);
+
+            var hospitalMarker = new kakao.maps.Marker({
+                position: new kakao.maps.LatLng(hospitalLat, hospitalLng),
+                map: map
+            });
+
+            var hospitalInfoWindow = new kakao.maps.InfoWindow({
+                content: `<div style="padding:5px;">🏥 ${hospitalName}</div>`
+            });
+            hospitalInfoWindow.open(map, hospitalMarker);
+
+            if (patientLat && patientLng) {
+                var patientMarker = new kakao.maps.Marker({
+                    position: new kakao.maps.LatLng(patientLat, patientLng),
+                    map: map
+                });
+
+                var patientInfoWindow = new kakao.maps.InfoWindow({
+                    content: `<div style="padding:5px;">🏠 나의 위치</div>`
+                });
+                patientInfoWindow.open(map, patientMarker);
+            }
+
+            var bounds = new kakao.maps.LatLngBounds();
+            bounds.extend(new kakao.maps.LatLng(hospitalLat, hospitalLng));
+            if (patientLat && patientLng) {
+                bounds.extend(new kakao.maps.LatLng(patientLat, patientLng));
+            }
+            map.setBounds(bounds);
+
+            setTimeout(() => {
+                map.relayout();
+                map.setBounds(bounds);
+            }, 300);
+        });
+    }
+    
+    function closeMap() {
+        document.getElementById('mapModal').style.display = 'none';
+    }
+    
+    // 클라이언트 세션 값 삭제 함수
+function clearGeoSessionLocal() {
+    sessionStorage.removeItem("GeoAddressLatitude");
+    sessionStorage.removeItem("GeoAddressLongitude");
+}
+
+// 목록 버튼 클릭 시 클라이언트 세션 삭제
+document.getElementById("listButton").addEventListener("click", function () {
+    clearGeoSessionLocal();
+});
+
+// 홈으로 버튼 클릭 시 클라이언트 세션 삭제
+document.getElementById("homeButton").addEventListener("click", function () {
+    clearGeoSessionLocal();
+});
+
+// 삭제 버튼 클릭 시 클라이언트 세션 삭제 후 삭제 요청
+document.getElementById("deleteButton").addEventListener("click", function () {
+    clearGeoSessionLocal();
+    document.getElementById("deleteForm").submit(); 
+});
+    
+</script>
+
+<!-- ✅ Bootstrap 및 jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>

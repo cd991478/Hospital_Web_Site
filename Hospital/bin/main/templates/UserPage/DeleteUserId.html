@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>회원 탈퇴</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <style>
+   body {
+   	    font-family: 'Pretendard', sans-serif;
+   	}
+    </style>
+  <script>
+  	function CheckPw(event){
+  		var pw = document.getElementsByName("UserPw")[0].value;
+        var pwc = document.getElementsByName("UserPwc")[0].value;
+     // 비밀번호 확인
+        if (pw !== pwc) {
+            alert("비밀번호가 일치하지 않습니다. 다시 입력해주세요.");
+            event.preventDefault();
+            return false;
+        }
+     return true;
+  	}
+  </script>
+  
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/UserPage/Header.html"></header>
+  <div class="container mt-5" style="max-width: 500px;">
+    <div class="card shadow-lg">
+      <div class="card-body">
+        <h3 class="text-danger text-center">회원 탈퇴</h3>
+        <br>
+        <p class="text-center">비밀번호 확인 후 회원 탈퇴를 진행합니다.</p>
+        <p class="text-center">회원 탈퇴 시 회원님의 문진표 정보와</p>
+        <p class="text-center">예약 정보를 포함한 모든 회원 정보가 삭제되며</p>
+        <p class="text-center">삭제된 정보는 복구가 불가능합니다.</p>
+        <hr>
+
+        <form method="POST" onsubmit="return CheckPw(event)">
+          <div class="form-group">
+            <label><strong>* 아이디</strong></label>
+            <input type="text" class="form-control" th:value="${UserId}" disabled />
+            <input type="hidden" name="UserId" th:value="${UserId}">
+          </div>
+
+          <div class="form-group">
+            <label><strong>* 비밀번호</strong></label>
+            <input type="password" class="form-control" name="UserPw" required />
+          </div>
+
+          <div class="form-group">
+            <label><strong>* 비밀번호 확인</strong></label>
+            <input type="password" class="form-control" name="UserPwc" required />
+          </div>
+		<hr>
+		<p th:if="${Error != null}" th:text="${Error}" class="text-danger text-center mt-3"></p>
+          <button type="submit" class="btn btn-danger btn-block">회원 탈퇴</button>
+		<br>
+
+        </form>
+        <div class="text-center">
+        <a th:href="@{/UserPage/EditUserInfo}" class="btn btn-secondary">취소</a>
+          <a th:href="@{/Home}" class="btn btn-secondary">홈으로</a>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

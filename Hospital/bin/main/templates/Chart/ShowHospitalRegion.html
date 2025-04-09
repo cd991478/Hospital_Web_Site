@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대구 병원 지역별 & 진료 과목 통계</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f3f4f6, #dfe9f3);
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="text-center font-weight-bold">대구 병원 지역별 & 진료 과목 통계</h2>
+    <hr>
+    <div class="text-center" th:text="|등록된 총 병원 수 : ${stats.Total}|"></div>
+    <hr>
+
+    <!-- 지역별 병원 통계 (Chart.js 도넛 차트) -->
+    <div class="chart-container">
+        <h5>지역별 병원 분포</h5>
+        <canvas id="regionChart"></canvas>
+    </div>
+
+    <!-- 진료 과목별 병원 통계 (D3.js 버블 차트) -->
+    <div class="chart-container">
+        <h5>진료 과목별 병원 개수</h5>
+        <svg id="bubbleChart"></svg>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    var count = /*[[${stats}]]*/ {};
+    var categoryStatsMap = /*[[${categoryStatsMap}]]*/ {};
+
+    // ✅ 툴팁 생성
+    var tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip");
+
+    // 지역별 병원 데이터
+    var regionLabels = ["수성구", "달서구", "동구", "서구", "남구", "북구", "중구", "달성군", "군위군"];
+    var regionValues = [
+        count.Suseong || 0, count.Dalseo || 0, count.Dong || 0,
+        count.Seo || 0, count.Nam || 0, count.Buk || 0,
+        count.Jung || 0, count.Dalseong || 0, count.Gunwi || 0
+    ];
+    var regionColors = d3.schemeCategory10;
+
+    // 도넛 차트 (지역별 병원 분포)
+    var ctx = document.getElementById('regionChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: regionLabels,
+            datasets: [{
+                data: regionValues,
+                backgroundColor: regionColors
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // 진료 과목별 병원 데이터 (D3.js 버블 차트)
+    var categoryData = Object.keys(categoryStatsMap).map(key => ({
+        label: key,
+        value: categoryStatsMap[key]
+    }));
+
+    function drawBubbleChart(chartId, data) {
+        var width = 900, height = 600;
+        var svg = d3.select("#" + chartId)
+            .attr("viewBox", `0 0 ${width} ${height}`)
+            .attr("preserveAspectRatio", "xMidYMid meet");
+
+        var color = d3.scaleOrdinal(d3.schemeTableau10);
+        var pack = d3.pack().size([width, height]).padding(15);
+        var root = d3.hierarchy({ children: data }).sum(d => d.value);
+        var nodes = pack(root).leaves();
+
+        var bubbles = svg.selectAll("g")
+            .data(nodes)
+            .enter().append("g")
+            .attr("transform", d => `translate(${d.x},${d.y})`);
+
+        // ✅ 버블 애니메이션 및 마우스 효과
+        bubbles.append("circle")
+            .attr("r", d => Math.sqrt(d.data.value) * 5)
+            .attr("fill", d => color(d.data.label))
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 2)
+            .on("mouseover", function (event, d) {
+                d3.select(this).transition().duration(200).attr("r", d => Math.sqrt(d.data.value) * 6);
+                tooltip.style("display", "block")
+                    .html(`<strong>${d.data.label}</strong><br>${d.data.value}개`)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 30) + "px");
+            })
+            .on("mousemove", function (event) {
+                tooltip.style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 30) + "px");
+            })
+            .on("mouseout", function (event, d) {
+                d3.select(this).transition().duration(200).attr("r", d => Math.sqrt(d.data.value) * 5);
+                tooltip.style("display", "none");
+            });
+
+        // ✅ 텍스트 가독성 향상
+        bubbles.append("text")
+            .attr("text-anchor", "middle")
+            .attr("dy", ".3em")
+            .text(d => d.r > 20 ? d.data.label : "")
+            .style("font-size", d => (d.r > 35 ? "18px" : d.r > 25 ? "14px" : "10px"))
+            .style("fill", "#fff");
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        if (Object.keys(categoryStatsMap).length > 0) {
+            drawBubbleChart("bubbleChart", categoryData);
+        } else {
+            console.error("categoryStatsMap 데이터가 비어 있음");
+        }
+    });
+</script>
+</body>
+</html>
