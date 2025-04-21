@@ -110,7 +110,7 @@ logging.level.org.springframework.cache=DEBUG
 	}
 ```
 
-```html5
+```html
 <div th:fragment="navbar">
   <nav class="navbar navbar-expand-lg bg-light" style="font-weight: bold;">
     <a th:href="@{/Home}">
