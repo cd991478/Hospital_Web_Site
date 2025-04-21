@@ -608,6 +608,55 @@ public class UserController {
 ![2-z](./images/2-z.png)
 
 ```java
+@Getter
+@Setter
+public class UserReadDTO {
+	
+	@Id
+	private String UserId;
+	
+	private String UserPw;
+	
+	private String UserName;
+	
+	private String UserRegNum;
+	
+	private Integer UserGender;
+	
+	private String UserPhone;
+	
+	private String UserAddress1;
+	
+	private String UserAddress2;
+	
+	private LocalDateTime InsertDateTime;
+	
+	private byte[] User_Salt;
+	
+	public UserReadDTO FromUserInfo(User u) {
+		this.UserId = u.getUserId();
+		this.UserPw = u.getUserPw();
+		this.UserName = u.getUserName();
+		this.UserRegNum = u.getUserRegNum();
+		this.UserGender = u.getUserGender();
+		this.UserPhone = u.getUserPhone();
+		this.UserAddress1 = u.getUserAddress1();
+		this.UserAddress2 = u.getUserAddress2();
+		this.InsertDateTime = u.getInsertDateTime();
+		this.User_Salt = u.getUser_Salt();
+		return this;
+	}
+	
+	public static UserReadDTO UserInfoFactory(User u) {
+		UserReadDTO uiDTO = new UserReadDTO();
+		uiDTO.FromUserInfo(u);
+		return uiDTO;
+	}
+}
+```
+
+
+```java
 @Service
 public class UserService {
 	
@@ -615,7 +664,7 @@ public class UserService {
 	private UserRepository userRepository;
 
 	//회원정보 읽기
-  	public UserReadDTO UserInfoRead(String UserId) { // ReadDTO는 회원 정보 수정 항목에 기재
+  	public UserReadDTO UserInfoRead(String UserId) { 
   		User userinfo = this.userRepository.findById(UserId).orElseThrow();
   		return UserReadDTO.UserInfoFactory(userinfo);
   	}
@@ -741,5 +790,255 @@ public class UserController {
 ![2-s](./images/2-s.png)
 
 ```java
+@Getter
+@Setter
+public class UserEditDTO {
+	
+	@NonNull
+	private String UserId;
+	@NonNull
+	private String UserPw;
+	@NonNull
+	private String UserName;
+	@NonNull
+	private String UserRegNum;
+	@NonNull
+	private Integer UserGender;
+	@NonNull
+	private String UserPhone;
+	@NonNull
+	private String UserAddress1;
+	@NonNull
+	private String UserAddress2;
 
+	 
+    public User Fill(User u) throws Exception {
+        u.setUserPw(PWSecurity.Hashing(UserPw.getBytes(), u.getUser_Salt()));
+        u.setUserName(this.UserName);
+        u.setUserRegNum(this.UserRegNum);
+        u.setUserGender(this.UserGender);
+        u.setUserPhone(this.UserPhone);
+        u.setUserAddress1(this.UserAddress1);
+        u.setUserAddress2(this.UserAddress2);
+        return u;
+    }
+}
+```
+
+```java
+@Service
+public class UserService {
+	
+	@Autowired
+	private UserRepository userRepository;
+	
+	@Autowired
+	private PatientService ps;
+	
+	@Autowired
+	private PatientRepository pr;
+
+	@Autowired
+	private AppointmentService aps;
+	
+	public List<User> findAll(){
+		return this.userRepository.findAll();
+	}
+
+	//회원정보 수정 기능
+	public void UserModify(UserEditDTO uieDTO) throws Exception {
+	    User user = this.userRepository.findById(uieDTO.getUserId()).orElseThrow();
+	    String inputPwHashed = PWSecurity.Hashing(uieDTO.getUserPw().getBytes(), user.getUser_Salt());
+	    if (!inputPwHashed.equals(user.getUserPw())) {
+	        throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+	    }
+	    // 정보 반영 및 저장
+	    user = uieDTO.Fill(user);// 이름, 전화번호, 주소 등 업데이트
+	    this.userRepository.save(user);
+	}
+
+	// 회원 탈퇴 기능
+	public boolean DeleteUserId(String UserId, String UserPw) throws Exception {
+		User userinfo = this.userRepository.findById(UserId).orElseThrow();
+		List<Patient> allpatient = new ArrayList<Patient>();
+		allpatient = this.ps.findAll();
+
+		if((userinfo.getUserPw().equals(PWSecurity.Hashing(UserPw.getBytes(), userinfo.getUser_Salt())))) {
+			for(Patient patients: allpatient) {
+				if(UserId!=null && patients.getP_UserId().equals(UserId)){
+					Integer p_id = patients.getP_Id();
+					this.pr.deleteById(p_id); // 문진표 삭제
+				}
+			}
+			this.aps.AppointmentDeleteAllByUserId(UserId); // 예약 삭제
+			this.userRepository.delete(userinfo); 
+			return true;
+		}
+		return false;
+	}
+}
+```
+
+```java
+@Controller
+public class UserController {
+
+	@Autowired
+	private UserService userService;
+
+	@GetMapping("/UserPage/EditUserInfo") // 회원정보 수정 화면으로 이동
+	public ModelAndView GotoEditUserInfo(HttpSession session, Model model) {
+		ModelAndView mav = new ModelAndView();
+		String UserId = (String)session.getAttribute("UserId");
+		
+		if(UserId == null) {
+			mav.setViewName("redirect:/Home");
+			return mav;
+		}
+		
+		model.addAttribute("UserId",UserId);
+		UserReadDTO uiDTO = this.userService.UserInfoRead(UserId);
+		mav.addObject("UserInfo",uiDTO);
+		mav.setViewName("/UserPage/EditUserInfo");
+		return mav;
+	}
+	
+	@PostMapping("/UserPage/EditUserInfo") // 회원 정보 수정 화면에서 정보 입력 후 수정 버튼 누르면 수행
+	public String EditUserInfo(UserEditDTO uieDTO, RedirectAttributes rda) throws Exception {
+	    try {
+	        this.userService.UserModify(uieDTO);
+	        return "/UserPage/EditUserInfoResult";
+	    } catch (IllegalArgumentException e) { 
+	        rda.addFlashAttribute("error", e.getMessage()); // 에러 메시지
+	        rda.addFlashAttribute("UserInfo", uieDTO); // 입력값 유지
+	        return "redirect:/UserPage/EditUserInfo";
+	    }
+	}
+
+	@GetMapping("/UserPage/DeleteUserId") // 회원 탈퇴 페이지 이동
+	   public String GotoDeleteUserId(HttpSession session, Model model) {
+	      String UserId = (String) session.getAttribute("UserId");
+	      model.addAttribute("UserId",UserId);
+	      
+	      if(UserId.equals("admin")) { // 관리자는 회원 탈퇴 불가능하게 컨트롤러에서 우회
+	         return "/Home";
+	      }
+	      else {
+	         return "/UserPage/DeleteUserId";
+	      }
+	}
+	
+	
+	@PostMapping("/UserPage/DeleteUserId") // 회원 탈퇴 진행
+	public String DeleteUserId(@RequestParam("UserId") String UserId,
+							   @RequestParam("UserPw") String UserPw,
+							   HttpSession session, Model model) throws Exception {
+		boolean result = this.userService.DeleteUserId(UserId, UserPw);
+		if(result == true) {
+			session.invalidate();
+			return "/UserPage/DeleteUserIdResult";
+		}
+		else {
+			model.addAttribute("UserId",UserId);
+			model.addAttribute("Error","비밀번호가 일치하지 않습니다.");
+			return "/UserPage/DeleteUserId";
+		}
+	}
+	
+	@GetMapping("/UserPage/DeleteUserIdResult") // 회원 탈퇴 결과
+	public String GotoDeleteUserIdResult() {
+		return "/UserPage/DeleteUserIdResult";
+	}
+}
+```
+
+```html
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/UserPage/Header.html"></header>
+  <div class="container mt-5" style="max-width: 400px;">
+    <h3>회원 정보 수정</h3>
+    <hr>
+    <form method="POST" th:object="${UserInfo}" id="UserInfoModifyForm" onsubmit="return CheckForm(event)">
+      
+      <input type="hidden" name="UserId" th:value="*{UserId}" />
+      
+      <div class="form-group">
+        <label for="UserPw">* 비밀번호</label>
+        <input type="password" name="UserPw" id="UserPw" class="form-control" placeholder="8~20자리 영어+숫자" required />
+		
+      </div>
+      
+      <div class="form-group">
+        <label for="UserPwc">* 비밀번호 확인</label>
+        <input type="password" name="UserPwc" id="UserPwc" class="form-control" placeholder="비밀번호 다시 입력" required />
+		
+		<div th:if="${error}" class="text-danger mt-1" th:text="${error}"></div>
+      </div>
+<hr>
+      <div class="form-group">
+        <label for="UserName">* 이름</label>
+        <input type="text" name="UserName" id="UserName" th:value="*{UserName}" class="form-control" placeholder="예) 홍길동" required />
+      </div>
+
+      <div class="form-group">
+        <label for="UserRegNum">* 주민등록번호 앞 6자리</label>
+        <input type="text" name="UserRegNum" id="UserRegNum" th:value="*{UserRegNum}" class="form-control" placeholder="예) 921014" required />
+      </div>
+
+	  <div class="form-group">
+	      <label>* 성별</label><br>
+	      <div class="form-check form-check-inline">
+	        <input type="radio" name="UserGender" value="1" class="form-check-input" required/>
+	        <label class="form-check-label">여성</label>
+	      </div>
+	      <div class="form-check form-check-inline">
+	        <input type="radio" name="UserGender" value="0" class="form-check-input"/>
+	        <label class="form-check-label">남성</label>
+	      </div>
+	    </div>
+
+
+      <div class="form-group">
+        <label for="UserPhone">* 휴대폰 번호</label>
+        <input type="text" name="UserPhone" id="UserPhone" th:value="*{UserPhone}" class="form-control" placeholder="예) 01012341234" required />
+      </div>
+
+	  <div class="form-group">
+	        <label for="UserAddress1">* 주소</label>
+	        <div class="input-group">
+	            <input type="text" name="UserAddress1" id="UserAddress1" class="form-control" placeholder="주소 검색 버튼을 눌러주세요" required readonly/>
+	            <div class="input-group-append">
+	                <button type="button" class="btn btn-secondary" onclick="execDaumPostcode()">주소 검색</button>
+	            </div>
+	        </div>
+	    </div>
+	  
+
+      <div class="form-group">
+        <label for="UserAddress2">* 상세 주소</label>
+        <input style="width:100%" type="text" name="UserAddress2" id="UserAddress2" th:value="*{UserAddress2}" class="form-control" placeholder="예) xx빌라 101호" required />
+      </div>
+      <hr>
+	<div class="mt-3 text-right">
+      <button type="submit" class="btn btn-primary" style="float:left;">정보 수정</button>
+      
+      <a href="#" th:href="@{/UserPage/DeleteUserId}" class="btn btn-danger" >회원탈퇴</a>
+      <a href="#" th:href="@{/Home}" class="btn btn-secondary" >취소</a>
+      
+      
+    </div>
+    </form>
+  </div>
+```
+
+- 네비게이션바 메뉴의 마이페이지에서 아이디를 제외한 각종 회원 정보를 수정할 수 있으며, 회원 탈퇴 또한 진행 가능합니다.
+- 회원 탈퇴시 회원이 등록한 문진표 정보와 예약 정보가 모두 삭제된 후 계정이 삭제됩니다.
+
+---
+
+#### 5. Covid-19 문진표 기능 (환자 등록)
+
+![2-s](./images/2-s.png)
+
+```java
 ```
