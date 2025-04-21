@@ -738,7 +738,7 @@ public class UserController {
 
 #### 4. 회원 정보 수정 및 회원 탈퇴
 
-![2-z](./images/2-z.png)
+![2-s](./images/2-s.png)
 
 ```java
 
