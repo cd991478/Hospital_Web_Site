@@ -207,7 +207,6 @@ logging.level.org.springframework.cache=DEBUG
 ![2c](./images/2c.png)
 
 ```java
-// Entity
 @Entity
 @Data
 @Builder
@@ -239,7 +238,6 @@ public class User {
 ```
 
 ```java
-// DTO
 @Getter
 @Setter
 public class UserCreateDTO {
@@ -265,9 +263,14 @@ public class UserCreateDTO {
 ```
 
 ```java
-// Service
-// 로그인 수행
-public boolean UserLogin(String UserId, String UserPw) throws Exception{ 
+@Service
+public class UserService {
+
+	@Autowired
+	private UserRepository userRepository;
+
+	// 로그인 수행
+	public boolean UserLogin(String UserId, String UserPw) throws Exception{ 
 		User userinfo = this.userRepository.findById(UserId).orElse(null);
 		if(userinfo==null) {
 			return false;
@@ -278,7 +281,8 @@ public boolean UserLogin(String UserId, String UserPw) throws Exception{
 		}
 		return true;
 	}
-// 회원가입 수행
+
+	// 회원가입 수행
     public void UserRegister(UserCreateDTO ucDTO) throws Exception {
         byte[] salt = PWSecurity.generateSalt(); 
         String hashedPassword = PWSecurity.Hashing(ucDTO.getUserPw().getBytes(), salt);
@@ -300,14 +304,21 @@ public boolean UserLogin(String UserId, String UserPw) throws Exception{
   	public boolean UserIdCheck(String UserId) {
   		return this.userRepository.existsById(UserId);
   	}
+}
 ```
 
 ```java
-// Controller
-@GetMapping("/UserPage/Login") // 로그인 화면으로 이동
-	public String GotoLogin() {
-		return "/UserPage/Login";
-	}
+@Controller
+public class UserController {
+
+	@Autowired
+	private UserService userService;
+
+	@GetMapping("/UserPage/Login") // 로그인 화면으로 이동
+		public String GotoLogin() {
+			return "/UserPage/Login";
+		}
+
 	@PostMapping("/UserPage/Login") // 로그인 버튼 누르면 실행
 	public String Login(@RequestParam("UserId") String UserId,
 						@RequestParam("UserPw") String UserPw,
@@ -368,8 +379,224 @@ public boolean UserLogin(String UserId, String UserPw) throws Exception{
 		session.invalidate();
 		return "redirect:/Home";
 	}
+}
 ```
 
+```html
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>회원가입</title>
+  <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+  <script>
+    function CheckUserId() {
+        var userId = document.getElementById('UserId').value;
+
+        // 아이디 형식 검사
+        var idPattern = /^(?=[a-zA-Z0-9]{4,12}$)(?![0-9]{4,12}$)[a-zA-Z0-9]+$/;
+        if (!idPattern.test(userId)) {
+            document.getElementById('IdError').style.color = "red";
+            document.getElementById('IdError').textContent = "사용할 수 없는 아이디입니다.";
+            return; // 형식이 잘못되면 중복 확인을 진행하지 않음
+        }
+
+        // Ajax 요청
+        fetch('/UserPage/CheckUserId', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId: userId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            var errorElement = document.getElementById('IdError');
+            if (data.status === 'error') {
+                errorElement.style.color = "red";
+                errorElement.textContent = "아이디가 이미 존재합니다.";
+            } else {
+                errorElement.style.color = "green";
+                errorElement.textContent = "사용 가능한 아이디입니다.";
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('IdError').textContent = "서버 오류가 발생했습니다.";
+        });
+    }
+
+    function CheckForm(event) {
+        var id = document.getElementsByName("UserId")[0].value;
+        var pw = document.getElementsByName("UserPw")[0].value;
+        var pwc = document.getElementsByName("UserPwc")[0].value; 
+        var name = document.getElementsByName("UserName")[0].value;
+        var regnum = document.getElementsByName("UserRegNum")[0].value;
+        var phone = document.getElementsByName("UserPhone")[0].value;
+
+        var idPattern = /^(?=[a-zA-Z0-9]{4,12}$)(?![0-9]{4,12}$)[a-zA-Z0-9]+$/;
+        var pwPattern = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,20}$/;
+        var namePattern = /^[가-힣]{2,4}$/; //2-4자리 이름 허용
+        var phonePattern = /^\d{11}$/; // 11자리 숫자만 허용
+        var regnumPattern = /^\d{6}$/; // 6자리 숫자만 허용
+
+       
+        if (!idPattern.test(id)) { // 아이디 검증
+            alert("아이디는 4~12자 사이의 영어와 숫자 조합만 가능합니다. 숫자만 포함된 아이디는 사용할 수 없습니다.");
+            event.preventDefault();
+            return false;
+        }     
+        if (!pwPattern.test(pw)) {
+            alert("비밀번호는 8~20자리이며, 영문자/숫자를 포함해야 합니다.");// 비밀번호 검증
+            event.preventDefault();
+            return false;
+        }      
+        if (pw !== pwc) {
+            alert("비밀번호가 일치하지 않습니다. 다시 입력해주세요.");// 비밀번호 확인
+            event.preventDefault();
+            return false;
+        }
+        if (!namePattern.test(name)) {
+            alert("이름은 2~4글자 사이의 한글만 입력 가능합니다.");// 이름 검증
+            event.preventDefault();
+            return false;
+        }
+        if (!regnumPattern.test(regnum)) {
+            alert("주민번호는 앞 6자리 숫자만 입력해주세요.");// 주민번호 검증
+            event.preventDefault();
+            return false;
+        }
+        if (!phonePattern.test(phone)) {
+            alert("전화 번호는 숫자 11자리로만 입력해주세요.\n예) 01012341234");// 전화번호 검증
+            event.preventDefault();
+            return false;
+        }
+        return true;
+    }
+  </script>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/UserPage/Header.html"></header>
+  <div class="container mt-5" style="max-width: 400px;">
+    <h3 class="text-center">회원가입</h3>
+    <hr>
+
+    <form method="POST" id="SignUpForm" onsubmit="return CheckForm(event)">
+      <div class="form-group">
+        <label for="UserId">* 아이디</label>
+        <div class="input-group">
+          <input type="text" name="UserId" id="UserId" class="form-control" placeholder="4~12자리 영어/숫자" required/>
+          <div class="input-group-append">
+            <button type="button" class="btn btn-secondary" id="CheckIdButton" onclick="CheckUserId()">중복확인</button>
+          </div>
+        </div>
+        <small id="IdError" class="form-text"></small>
+      </div>
+
+      <div class="form-group">
+        <label for="UserPw">* 비밀번호</label>
+        <input type="password" name="UserPw" class="form-control" placeholder="8~20자리 영어+숫자" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="UserPwc">* 비밀번호 확인</label>
+        <input type="password" name="UserPwc" class="form-control" placeholder="비밀번호 다시 입력" required/>
+      </div>
+	<hr>
+      <div class="form-group">
+        <label for="UserName">* 이름</label>
+        <input type="text" name="UserName" class="form-control" placeholder="예) 홍길동" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="UserRegNum">* 주민등록번호 앞자리</label>
+        <input type="text" name="UserRegNum" class="form-control" placeholder="예) 921014" required/>
+      </div>
+
+      <div class="form-group">
+        <label>* 성별</label><br>
+        <div class="form-check form-check-inline">
+          <input type="radio" name="UserGender" value="1" class="form-check-input" required/>
+          <label class="form-check-label">여성</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input type="radio" name="UserGender" value="0" class="form-check-input"/>
+          <label class="form-check-label">남성</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="UserPhone">* 휴대폰 번호</label>
+        <input type="text" name="UserPhone" class="form-control" placeholder="예) 01012341234" required/>
+      </div>
+
+	  <div class="form-group">
+	      <label for="UserAddress1">* 주소</label>
+	      <div class="input-group">
+	          <input type="text" name="UserAddress1" id="UserAddress1" class="form-control" placeholder="주소 검색 버튼을 눌러주세요" required readonly/>
+	          <div class="input-group-append">
+	              <button type="button" class="btn btn-secondary" onclick="execDaumPostcode()">주소 검색</button>
+	          </div>
+	      </div>
+	  </div>
+
+      <div class="form-group">
+        <label for="UserAddress2">* 상세 주소</label>
+        <input type="text" name="UserAddress2" class="form-control" placeholder="예) xx빌라 101호" required/>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">회원가입</button>
+    </form>
+
+    <div th:if="${Error}" class="mt-3 text-danger">
+      <p th:text="${Error}"></p>
+    </div>
+
+    <div class="mt-3 text-center">
+      <a class="btn btn-link" th:href="@{/UserPage/Login}" role="button">취소</a>
+      <a class="btn btn-link" th:href="@{/Home}" role="button">홈으로</a>
+    </div>
+  </div>
+  <br><br><br>
+  <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script> // 주소 검색 API
+  <script>
+      function execDaumPostcode() {
+          new daum.Postcode({
+              oncomplete: function(data) {
+                  var fullAddr = ''; 
+                  var extraAddr = '';
+
+                  if (data.userSelectedType === 'R') {
+                      fullAddr = data.roadAddress;
+                  } else {
+                      fullAddr = data.jibunAddress;
+                  }
+
+                  if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
+                      extraAddr += data.bname;
+                  }
+
+                  if (data.buildingName !== '' && data.apartment === 'Y') {
+                      extraAddr += (extraAddr !== '' ? ', ' + data.buildingName : data.buildingName);
+                  }
+
+                  if (extraAddr !== '') {
+                      fullAddr += ' (' + extraAddr + ')';
+                  }
+
+                  document.getElementById('UserAddress1').value = fullAddr;
+              }
+          }).open();
+      }
+  </script>
+
+  <script src="/webjars/jquery/3.5.1/jquery.min.js"></script>
+  <script src="/webjars/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+```
 
 - 주요 기능인 문진표 등록, 병원 예약을 이용하기위해선 회원 가입을 하여 로그인 하여야 합니다.
 
@@ -377,6 +604,140 @@ public boolean UserLogin(String UserId, String UserPw) throws Exception{
 ---
 
 #### 3. 아이디 찾기 및 비밀번호 찾기
+
+![2-z](./images/2-z.png)
+
+```java
+@Service
+public class UserService {
+	
+	@Autowired
+	private UserRepository userRepository;
+
+	//회원정보 읽기
+  	public UserReadDTO UserInfoRead(String UserId) { // ReadDTO는 회원 정보 수정 항목에 기재
+  		User userinfo = this.userRepository.findById(UserId).orElseThrow();
+  		return UserReadDTO.UserInfoFactory(userinfo);
+  	}
+
+	//아이디 찾기
+	public UserReadDTO FindUserId(String UserName, String UserRegNum) {
+		List<User> userinfolist = new ArrayList<User>();
+		User userinforesult;
+		userinfolist = this.userRepository.findAll();
+		for(User user: userinfolist) {
+			if((user.getUserName().equals(UserName))&&(user.getUserRegNum().equals(UserRegNum))) {
+				userinforesult = user;
+				return UserReadDTO.UserInfoFactory(userinforesult);
+			}
+		}	
+		return  null;
+	}
+	
+	//비번 찾기
+	public UserReadDTO FindUserPw(String UserId, String UserName, String UserRegNum) {
+		
+		User user = this.userRepository.findById(UserId).orElse(null);
+		UserReadDTO urDTO = new UserReadDTO();
+		if(user != null) {
+			if((user.getUserName().equals(UserName)) && (user.getUserRegNum().equals(UserRegNum))) {
+				return UserReadDTO.UserInfoFactory(user);
+			}
+			return urDTO = null;
+		}
+		else {	
+			return urDTO = null;
+		}
+	}
+
+	//비밀번호 재설정
+	public void ResetUserPw(String UserId, String UserPw) throws Exception {
+		User user = this.userRepository.findById(UserId).orElseThrow();
+		user.setUserPw(PWSecurity.Hashing(UserPw.getBytes(), user.getUser_Salt()));
+		this.userRepository.save(user);
+	}
+}
+```
+
+
+```java
+@Controller
+public class UserController {
+
+	@Autowired
+	private UserService userService;
+
+	@GetMapping("/UserPage/FindUserId") // 로그인 페이지에서 아이디 찾기 누르면 이동
+	public String GotoFindUserId() {
+		return "/UserPage/FindUserId";
+	}
+	
+	@PostMapping("/UserPage/FindUserId") // 아이디 찾기 페이지에서 정보 입력 후 찾기 버튼 누르면 수행
+	public ModelAndView FindUserId(@RequestParam("UserName") String UserName,
+				       @RequestParam("UserRegNum") String UserRegNum,
+								     Model model) {
+		ModelAndView mav = new ModelAndView();
+		UserReadDTO uiDTO = new UserReadDTO();
+		uiDTO = this.userService.FindUserId(UserName, UserRegNum);
+		if(uiDTO != null) {
+			mav.addObject("FindUserInfoResult", uiDTO);
+			mav.setViewName("/UserPage/FindUserIdResult");
+			return mav;
+		}
+		else {
+			model.addAttribute("error","입력하신 정보와 일치하는 회원정보가 없습니다.");
+			mav.setViewName("/UserPage/FindUserId");
+			return mav;
+		}
+	}
+	
+	@GetMapping("/UserPage/FindUserIdResult") // 아이디 찾기 성공시 결과 페이지 이동
+	public String GotoFindUserIdResult() {
+		return "/UserPage/FindUserIdResult";
+	}
+	
+	@GetMapping("/UserPage/FindUserPw") // 로그인 페이지에서 비밀번호 찾기 누르면 이동
+	public String GotoFindUserPw() {
+		return "/UserPage/FindUserPw";
+	}
+	
+	@PostMapping("/UserPage/FindUserPw") // 비밀번호 찾기 페이지에서 정보 입력 후 버튼 누르면 수행
+	public ModelAndView FindUserPw(@RequestParam("UserId") String UserId,
+				       @RequestParam("UserName") String UserName,
+				       @RequestParam("UserRegNum") String UserRegNum,
+								     Model model) {
+		ModelAndView mav = new ModelAndView();
+		UserReadDTO uiDTO = new UserReadDTO();
+		uiDTO = this.userService.FindUserPw(UserId, UserName, UserRegNum);
+		if(uiDTO != null) {
+			mav.addObject("FindUserInfoResult",uiDTO);
+			mav.setViewName("/UserPage/ResetUserPw");
+			return mav;
+		}
+		else {
+			model.addAttribute("error","입력하신 정보와 일치하는 회원정보가 없습니다.");
+			mav.setViewName("/UserPage/FindUserPw");
+			return mav;
+		}
+	}
+
+	@PostMapping("/UserPage/ResetUserPw") // 비밀번호 재설정 버튼 누르면 수행
+	public String ResetUserPw(@RequestParam("UserId") String UserId,
+				  @RequestParam("UserPw") String UserPw) throws Exception {
+		
+		this.userService.ResetUserPw(UserId, UserPw);
+		return "/UserPage/ResetUserPwResult";
+	}
+}
+```
+
+- 아이디 혹은 비밀번호를 잊어버린경우 개인 정보를 입력 후 찾을 수 있습니다.
+
+
+---
+
+#### 4. 회원 정보 수정 및 회원 탈퇴
+
 ![2-z](./images/2-z.png)
 
 ```java
