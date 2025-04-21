@@ -198,9 +198,8 @@ logging.level.org.springframework.cache=DEBUG
 
 - 홈 화면의 상단에 주요 메뉴들이 있으며, 메뉴에 마우스를 올리면 하위 메뉴들이 열리고, 클릭하면 해당 세부 메뉴로 이동됩니다.
 
-![2-1](./images/2-1.png)
-![2](./images/2.png)
-![2-2](./images/2-2.png)
+![2c](./images/2c.png)
+
 ```java
 // Entity
 @Entity
