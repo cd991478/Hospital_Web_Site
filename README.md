@@ -12,7 +12,7 @@
 - 등록된 전체 Covid-19 환자의 성별, 연령대별 데이터 차트 조회 기능
 - 등록된 대구 병원의 지역별, 진료과목별 차트 조회 기능
 - 관리자 전용 기능
-- 공지사항 게시판 기능 (관리자만 게시글 등록, 수정, 삭제 가능)
+- 공지사항 게시판 기능 (관리자의 게시글 등록, 수정, 삭제 기능)
 
 ### - 구동 과정
 #### 1. 웹 사이트 홈
@@ -202,8 +202,170 @@ logging.level.org.springframework.cache=DEBUG
 ![2](./images/2.png)
 ![2-2](./images/2-2.png)
 ```java
-
+// Entity
+@Entity
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class User {
+	@Id
+	@Column(length = 12, columnDefinition = "VARCHAR(12) COLLATE utf8mb4_bin")
+	private String UserId;
+	@Column(columnDefinition = "CHAR(64)")
+	private String UserPw;
+	@Column(columnDefinition = "VARCHAR(4)")
+	private String UserName;
+	@Column(columnDefinition = "CHAR(6)")
+	private String UserRegNum;
+	@Column(columnDefinition = "TINYINT")
+	private Integer UserGender;
+	@Column(columnDefinition = "CHAR(11) COLLATE ascii_bin")
+	private String UserPhone;
+	@Column(columnDefinition = "VARCHAR(50)")
+	private String UserAddress1;
+	@Column(columnDefinition = "VARCHAR(25)")
+	private String UserAddress2;
+	@Column(columnDefinition = "BINARY(16)", nullable = false)
+	private byte[] User_Salt; 
+	@CreationTimestamp
+	private LocalDateTime InsertDateTime;
+}
 ```
 
+```java
+// DTO
+@Getter
+@Setter
+public class UserCreateDTO {
+	@NonNull
+	private String UserId;
+	@NonNull
+	private String UserPw;
+	@NonNull
+	private String UserName;
+	@NonNull
+	private String UserRegNum;
+	@NonNull
+	private Integer UserGender;
+	@NonNull
+	private String UserPhone;
+	@NonNull
+	private String UserAddress1;
+	@NonNull
+	private String UserAddress2;
+	@NonNull
+	private byte[] Salt;
+}
+```
+
+```java
+// Service
+// 로그인 수행
+public boolean UserLogin(String UserId, String UserPw) throws Exception{ 
+		User userinfo = this.userRepository.findById(UserId).orElse(null);
+		if(userinfo==null) {
+			return false;
+		}
+		else if(!userinfo.getUserPw()
+				.equals(PWSecurity.Hashing(UserPw.getBytes(), userinfo.getUser_Salt()))) {
+			return false;
+		}
+		return true;
+	}
+// 회원가입 수행
+    public void UserRegister(UserCreateDTO ucDTO) throws Exception {
+        byte[] salt = PWSecurity.generateSalt(); 
+        String hashedPassword = PWSecurity.Hashing(ucDTO.getUserPw().getBytes(), salt);
+        User user = User.builder()
+                .UserId(ucDTO.getUserId())
+                .UserPw(hashedPassword)
+                .UserName(ucDTO.getUserName())
+                .UserRegNum(ucDTO.getUserRegNum())
+                .UserGender(ucDTO.getUserGender())
+                .UserPhone(ucDTO.getUserPhone())
+                .UserAddress1(ucDTO.getUserAddress1())
+                .UserAddress2(ucDTO.getUserAddress2())
+                .User_Salt(salt) 
+                .build();
+        this.userRepository.save(user); 
+    }
+    
+    //회원 가입시 아이디 중복 확인
+  	public boolean UserIdCheck(String UserId) {
+  		return this.userRepository.existsById(UserId);
+  	}
+```
+
+```java
+// Controller
+@GetMapping("/UserPage/Login") // 로그인 화면으로 이동
+	public String GotoLogin() {
+		return "/UserPage/Login";
+	}
+	@PostMapping("/UserPage/Login") // 로그인 버튼 누르면 실행
+	public String Login(@RequestParam("UserId") String UserId,
+						@RequestParam("UserPw") String UserPw,
+						HttpSession session, Model model) throws Exception  {
+		boolean Result = this.userService.UserLogin(UserId,UserPw);
+		if(Result == true){
+			session.setAttribute("UserId", UserId);
+			System.out.println(UserId);
+			return "redirect:/Home";
+		}
+		else {
+			model.addAttribute("Error", "아이디 또는 비밀번호가 틀렸습니다.");
+			return "/UserPage/Login";
+		}
+	}
+	
+	@GetMapping("/UserPage/SignUp") // 회원가입 버튼을 누르면 회원가입 화면으로 이동 
+	public String GotoSignUp() {
+		return "/UserPage/SignUp";
+	}
+	
+	@PostMapping("/UserPage/SignUp") // 회원가입 화면에서, 입력 후 회원가입 완료 누르면 실행 후 이동
+	public String SignUp(UserCreateDTO ucDTO, RedirectAttributes rda) throws Exception {
+		if(this.userService.UserIdCheck(ucDTO.getUserId())) {
+			rda.addFlashAttribute("Error","사용할 수 없는 아이디입니다.");
+			rda.addFlashAttribute("UserId",ucDTO.getUserId());
+			rda.addFlashAttribute("UserName",ucDTO.getUserName());
+			rda.addFlashAttribute("UserRegNum",ucDTO.getUserRegNum());
+			rda.addFlashAttribute("UserPhone",ucDTO.getUserPhone());
+			rda.addFlashAttribute("UserGender",ucDTO.getUserGender());
+			rda.addFlashAttribute("UserAddress1",ucDTO.getUserAddress1());
+			rda.addFlashAttribute("UserAddress2",ucDTO.getUserAddress2());
+			return "redirect:/UserPage/SignUp";
+		}
+		this.userService.UserRegister(ucDTO);
+		return "/UserPage/SignUpComplete";
+	}
+	
+	
+	@PostMapping("/UserPage/CheckUserId") 
+	@ResponseBody// 아이디 중복체크
+	public Map<String, String> CheckUserId(@RequestBody Map<String, String> requestData) {
+	    String userId = requestData.get("userId");
+	    Map<String, String> response = new HashMap<>();
+	    if (this.userService.UserIdCheck(userId)) {
+	        response.put("status", "error");
+	        response.put("message", "아이디가 이미 존재합니다.");
+	    } else {
+	        response.put("status", "success");
+	        response.put("message", "사용 가능한 아이디입니다.");
+	    }	    
+	    return response;
+	}
+	
+	
+	@GetMapping("/UserPage/Logout") // 로그아웃
+	public String Logout(HttpSession session) {
+		session.invalidate();
+		return "redirect:/Home";
+	}
+```
+
+
 - 주요 기능인 문진표 등록, 병원 예약을 이용하기위해선 회원 가입을 하여 로그인 하여야 합니다.
+  
   
