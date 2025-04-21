@@ -1127,7 +1127,8 @@ public class UserController {
 
 #### 5. Covid-19 문진표 기능 (환자 등록)
 
-![2-s](./images/2-s.png)
+![3-s](./images/3-s.png)
 
 ```java
+
 ```
