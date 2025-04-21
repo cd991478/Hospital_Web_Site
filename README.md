@@ -372,5 +372,11 @@ public boolean UserLogin(String UserId, String UserPw) throws Exception{
 
 
 - 주요 기능인 문진표 등록, 병원 예약을 이용하기위해선 회원 가입을 하여 로그인 하여야 합니다.
-  
-  
+
+
+---
+
+#### 3. 아이디 찾기 및 비밀번호 찾기
+![2c](./images/2c.png)
+
+```java
