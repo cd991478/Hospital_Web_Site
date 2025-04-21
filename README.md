@@ -377,6 +377,8 @@ public boolean UserLogin(String UserId, String UserPw) throws Exception{
 ---
 
 #### 3. 아이디 찾기 및 비밀번호 찾기
-![2c](./images/2c.png)
+![2-z](./images/2-z.png)
 
 ```java
+
+```
