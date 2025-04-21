@@ -1127,9 +1127,477 @@ public class UserController {
 
 #### 5. Covid-19 문진표 기능 (환자 등록)
 
-![3-s](./images/3-s.png)
+![3](./images/3-s.png)
 
 ```java
+@Entity
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@Table(name = "patient")
+public class Patient implements Serializable {
+    private static final long serialVersionUID = 1L;
+    @Id
+    private Integer P_Id;
+    @Column(columnDefinition = "VARCHAR(12) COLLATE utf8mb4_bin")
+    private String P_UserId;
+    @Column(columnDefinition = "CHAR(6) COLLATE utf8mb4_bin")
+    private String P_RegNum;
+    @Column(columnDefinition = "CHAR(11) COLLATE utf8mb4_bin")
+    private String P_Phone;
+    @Column(columnDefinition = "VARCHAR(5)")
+    private String P_Name;
+    @Column(columnDefinition = "VARCHAR(100)") 
+    private String P_Address1;
+    @Column(columnDefinition = "VARCHAR(25)")
+    private String P_Address2;
+    @Column(columnDefinition = "TINYINT")   
+    private Integer P_Gender;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_Age;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_TakingPill;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_Covid19;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_Nose;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_Cough;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_Pain;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_Diarrhea;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_HighRiskGroup;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_VAS;
+    @Column(columnDefinition = "TINYINT")
+    private Integer P_Agreement;
+    @Column(columnDefinition = "DECIMAL(15,11)")
+    private BigDecimal P_Longitude;
+    @Column(columnDefinition = "DECIMAL(15,11)")
+    private BigDecimal P_Latitude;
+  
+    @CreationTimestamp
+    @JsonIgnore
+    private LocalDateTime P_InsertDateTime;
+    
+
+    @PrePersist
+    public void generateRandomPId() {
+        if (this.P_Id == null) {
+            this.P_Id = generateRandomId();
+        }
+        if (this.P_RegNum != null) {
+           this.P_Age = this.CalcAge(this.P_RegNum);
+        }
+    }
+
+	// primary key 값 랜덤 생성
+    private Integer generateRandomId() {
+        Random rand = new Random();
+        return rand.nextInt(90000000) + 10000000;
+    }
+}
 ```
+
+```java
+@Service
+@Transactional
+public class PatientService {
+
+	   @Autowired
+	   private PatientRepository patientRepository;
+	   @Autowired
+	   private PatientTreeCacheService patientTreeCacheService;
+	   
+	   public List<Patient> findAll(){
+		   return this.patientRepository.findAll();
+	   }
+
+	   public Integer PatientInsert(PatientCreateDTO pcDTO) {
+		Patient patient = Patient.builder()
+			     .P_UserId(pcDTO.getP_UserId())
+                             .P_Name(pcDTO.getP_Name())
+                             .P_Gender(pcDTO.getP_Gender())
+                             .P_RegNum(pcDTO.getP_RegNum())
+                             .P_Phone(pcDTO.getP_Phone())
+                             .P_Address1(pcDTO.getP_Address1())
+                             .P_Address2(pcDTO.getP_Address2())
+                             .P_TakingPill(pcDTO.getP_TakingPill())
+                             .P_Covid19(pcDTO.getP_Covid19())
+                             .P_Nose(pcDTO.getP_Nose())
+                             .P_Cough(pcDTO.getP_Cough())
+                             .P_Pain(pcDTO.getP_Pain())
+                             .P_Diarrhea(pcDTO.getP_Diarrhea())
+                             .P_HighRiskGroup(pcDTO.getP_HighRiskGroup())
+                             .P_VAS(pcDTO.getP_VAS())
+                             .P_Agreement(pcDTO.getP_Agreement())
+                             .P_Latitude(pcDTO.getP_Latitude())
+                             .P_Longitude(pcDTO.getP_Longitude())
+                             .build();
+           	this.patientRepository.save(patient);
+           	patientTreeCacheService.addPatientToCache(patient);
+
+           	return patient.getP_Id();
+	   }
+
+		// 등록된 문진표 조회 페이지 정보 로드
+	   public PatientReadDTO PatientRead(Integer P_Id, HttpSession session) {
+           	Patient patient = this.patientRepository.findById(P_Id).orElseThrow();
+           
+           	String P_Address1 = patient.getP_Address1().split(" ")[1]; // 달서구/수성구/남구 등등
+           	String P_Address2 = patient.getP_Address1().split(" ")[2]; // 구마로36길/달구벌대로 등 ~로
+
+           	for(int i=0; i < P_Address2.length();i++) {
+        	   String modifiedAddress = P_Address2.substring(0, i);
+        	   if(modifiedAddress.endsWith("로")) {
+        		   P_Address2 = modifiedAddress;
+        	   }
+           }
+            	session.setAttribute("P_Address1", P_Address1);
+            	session.setAttribute("P_Address2", P_Address2);
+
+          	 return PatientReadDTO.PatientInfoFactory(patient);
+        }
+	   
+	   
+
+		// 문진표 수정 페이지 정보 로드
+	   public PatientEditResponseDTO PatientInfoEdit(Integer P_Id) throws NoSuchElementException{
+		   	Patient patient = this.patientRepository.findById(P_Id).orElseThrow();
+		   	return PatientEditResponseDTO.PatientFactory(patient);
+	   }
+
+		// 문진표 업데이트
+	   public void PatientInfoUpdate(PatientEditDTO pieDTO) throws NoSuchElementException{
+		   Patient patient = this.patientRepository.findById(pieDTO.getP_Id()).orElseThrow();
+		   patient = pieDTO.Fill(patient);
+		   this.patientRepository.save(patient);
+	   }
+
+		// 문진표 삭제
+	   public void PatientInfoDelete(Integer P_Id) {
+		   Patient patient = this.patientRepository.findById(P_Id).orElse(null);
+		   if(patient != null) {
+			   this.patientRepository.deleteById(P_Id);
+		   }
+	   }
+```
+
+```java
+@Controller
+@SessionAttributes("UserId") 
+public class PatientController {
+
+	@Autowired
+	private PatientRepository pir;
+	@Autowired
+	private PatientService pis;
+	@Autowired
+	private UserService uis;
+	@Autowired
+	private D_HospitalService d_hs;
+	@Autowired
+	private PatientTreeCacheService ptcs;
+	@Autowired
+	private PatientGeographyService pgs;
+
+	String[] p_address = new String[5]; // 도로명 주소의 체계에 따라 5개의 공백 구분에 맞게 배열 크기 선정
+	String address1; // DB에서 가져온 주소
+	String address2;
+	List<D_Hospital> D_HospitalList = new ArrayList<>();
+
+	@GetMapping("/PatientInfo/Input") // 문진표 입력 받는 화면 이동
+	public ModelAndView PatientInfoInput(HttpSession session) {
+		ModelAndView mav = new ModelAndView();
+		UserReadDTO uiDTO = new UserReadDTO();
+		String UserId = (String) session.getAttribute("UserId");
+		uiDTO = this.uis.UserInfoRead(UserId);
+		mav.addObject("UserInfo", uiDTO);
+		mav.setViewName("/PatientInfo/Input");
+		return mav;
+	}
+
+	@PostMapping("/PatientInfo/Input") // 문진표 입력 후 등록 버튼 누르면 수행
+	public String PatientInfoInsert(PatientCreateDTO pcDTO, HttpSession session) {
+		String P_UserId = (String) session.getAttribute("UserId");
+		pcDTO.setP_UserId(P_UserId);
+
+		// 주소 위도 경도 변환
+		 BigDecimal[] coordinates = pgs.getCoordinates(pcDTO.getP_Address1());
+		 pcDTO.setP_Latitude(coordinates[0]); // 위도
+		 pcDTO.setP_Longitude(coordinates[1]); // 경도
+
+		Integer P_Id = this.pis.PatientInsert(pcDTO); // 환자 정보 저장
+		session.setAttribute("P_Id", P_Id);
+
+		//  트리를 캐싱 서비스에서 관리
+		Patient patient = this.pir.findById(P_Id).orElse(null);
+		if (patient != null) {
+			ptcs.addPatientToCache(patient); // 캐싱된 트리 업데이트
+		} else {
+			System.out.println("환자 정보가 없어 트리에 추가하지 못함.");
+		}
+
+		return "redirect:/PatientInfo/Result/" + P_Id;
+	}
+
+	@GetMapping("/PatientInfo/Result/{P_Id}") // 등록된 문진표 조회 페이지 이동
+	public ModelAndView PatientInfoResult(@PathVariable("P_Id") Integer P_Id, HttpSession session) throws Exception {
+	    ModelAndView mav = new ModelAndView();    
+	    if (P_Id == null) {
+	        throw new NoSuchElementException("문진표 정보가 없습니다.");
+	    }
+	    PatientReadDTO pirDTO = this.pis.PatientRead(P_Id, session);
+	    String SessionUserId = (String) session.getAttribute("UserId");
+
+	    if (!pirDTO.getP_UserId().equals(SessionUserId)) {
+	        throw new SecurityException("잘못된 접근입니다.");
+	    }
+		// 주소 위도 경도 변환
+	        BigDecimal[] coordinates = pgs.getCoordinates(pirDTO.getP_Address1());
+		session.setAttribute("GeoAddressLatitude", coordinates[0]);
+		session.setAttribute("GeoAddressLongitude", coordinates[1]);
+		p_address = pirDTO.getP_Address1().split(" ");
+
+		mav.addObject("PatientData", pirDTO);
+		address1 = p_address[1]; // 달서구
+		address2 = p_address[2]; // 구마로
+		mav.setViewName("PatientInfo/Result");
+		session.setAttribute("P_Id", P_Id);
+		return mav;
+	}
+
+	@GetMapping("/PatientInfo/Edit") // 문진표 조회 페이지에서 수정 버튼 누르면 이동
+	public ModelAndView PatientInfoEdit(HttpSession session) throws NoSuchElementException {
+		ModelAndView mav = new ModelAndView();
+		Integer P_Id = (Integer) session.getAttribute("P_Id");
+		if (P_Id == null) {
+			throw new NoSuchElementException("잘못된 접근입니다.");
+		}
+		PatientEditResponseDTO pierDTO = this.pis.PatientInfoEdit(P_Id);
+
+		mav.addObject("PatientInfoEdit", pierDTO);
+		mav.setViewName("PatientInfo/Edit");
+		return mav;
+	}
+
+	@PostMapping("/PatientInfo/Edit") // 문진표 수정 페이지에서 입력 후 수정 버튼 누를시 수행
+	public String PatientInfoUpdate(@Validated PatientEditDTO pieDTO, HttpSession session, Errors errors) throws 								NoSuchAlgorithmException {
+	
+		Integer P_Id = (Integer) session.getAttribute("P_Id");
+		if (P_Id == null) {
+			throw new NoSuchElementException("문진표 정보를 찾을 수 없습니다.");
+		}
+		session.setAttribute("P_Id", P_Id);
+		pieDTO.setP_Id(P_Id);
+		this.pis.PatientInfoUpdate(pieDTO);
+		return "redirect:/PatientInfo/Result/" + P_Id;
+	}
+
+	@GetMapping("/PatientInfo/Delete") // 문진표 삭제
+	public String PatientInfoDelete(@RequestParam("P_Id") Integer P_Id, Model model) {
+		this.pis.PatientInfoDelete(P_Id);
+		model.addAttribute("message", "문진표가 삭제되었습니다.");
+		return "redirect:/PatientInfo/List";
+	}
+}
+```
+
+```html
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>COVID-19 문진표 작성</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="/webjars/bootstrap/4.5.0/css/bootstrap.min.css" />
+  <style>
+   body{
+             font-family: 'Pretendard', sans-serif;
+      }
+  </style>
+  <script>
+	function CheckForm(event){
+	  var name = document.getElementsByName("P_Name")[0].value;
+	  var regnum = document.getElementsByName("P_RegNum")[0].value;
+	  var phone = document.getElementsByName("P_Phone")[0].value;
+
+	  var namePattern = /^[가-힣]{2,4}$/;
+	  var phonePattern = /^\d{11}$/;
+	  var regnumPattern = /^\d{6}$/;
+
+	  if (!namePattern.test(name)) {
+	    alert("이름은 2~4글자 사이의 한글만 입력 가능합니다.");
+	    event.preventDefault();
+	    return false;
+	  }
+
+	  if (!regnumPattern.test(regnum)) {
+	    alert("주민번호는 앞 6자리 숫자만 입력해주세요.");
+	    event.preventDefault();
+	    return false;
+	  }
+
+	  if (!phonePattern.test(phone)) {
+	    alert("전화 번호는 숫자 11자리로만 입력해주세요.\n예) 01012341234");
+	    event.preventDefault();
+	    return false;
+	  }
+
+	  // 개인정보 수집 동의 체크
+	  var agreementInput = document.querySelector('input[name="P_Agreement"]:checked');
+	  if (!agreementInput || agreementInput.value !== "1") {
+	    alert("개인 정보 수집에 동의해야 합니다.");
+	    event.preventDefault();
+	    return false;
+	  }
+
+	  return true;
+	}
+
+    // 슬라이더의 값을 실시간으로 표시
+    document.addEventListener("DOMContentLoaded", function() {
+      const vasSlider = document.getElementById('VAS');
+      const vasValue = document.getElementById('VAS_value');
+      vasValue.textContent = vasSlider.value; // 슬라이더 초기 값 표시
+
+      vasSlider.addEventListener("input", function() {
+          vasValue.textContent = this.value; // 슬라이더 값이 변경될 때마다 표시
+      });
+    });
+  </script>
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/PatientInfo/Header.html"></header>
+  <div class="container mt-4" style="max-width:500px;">
+    <h3 class="text-center">COVID-19 문진표 작성</h3>
+    <hr>
+    <form method="POST" th:object="${UserInfo}" th:action="@{/PatientInfo/Input}" 
+		onsubmit="return CheckForm(event)"> 
+      <div class="form-group">
+        <label for="P_UserId"><strong>* 아이디</strong></label>
+        <input type="text" class="form-control" name="P_UserId" th:value="*{UserId}" disabled required />
+      </div>    
+      <div class="form-group">
+        <label for="P_Name"><strong>* 이름</strong></label>
+        <input type="text" class="form-control" name="P_Name" th:value="*{UserName}" required />
+      </div>
+      <div class="form-group">
+        <label><strong>* 성별</strong></label><br>
+        <input type="radio" name="P_Gender" value="1" th:checked="*{UserGender == 1}" required/> 여성　
+        <input type="radio" name="P_Gender" value="0" th:checked="*{UserGender == 0}" /> 남성
+      </div>
+      <div class="form-group">
+        <label for="P_RegNum"><strong>* 주민번호 앞 6자리</strong></label>
+        <input type="text" class="form-control" name="P_RegNum" th:value="*{UserRegNum}" required />
+      </div>
+      <div class="form-group">
+        <label for="P_Phone"><strong>* 전화번호</strong></label>
+        <input type="text" class="form-control" name="P_Phone" th:value="*{UserPhone}" 
+				placeholder="숫자만 기입" required />
+      </div>
+      <div class="form-group">
+        <label for="P_Address1"><strong>* 도로명 주소</strong></label>
+        <input type="text" class="form-control" name="P_Address1" th:value="*{UserAddress1}" 
+			placeholder="예)대구시 수성구 달구벌대로 1234-12" required />
+      </div>
+      <div class="form-group">
+        <label for="P_Address2"><strong>* 주소 상세</strong></label>
+        <input type="text" class="form-control" name="P_Address2" th:value="*{UserAddress2}" 
+			placeholder="예)OO빌라 101호" required />
+      </div>
+   <hr>
+   <div class="form-group">
+       <label><strong>* 약(감기약/해열제 등) 복용 유무</strong></label><br>
+       <input type="radio" id="Pill1" name="P_TakingPill" value="1">
+       <label for="Pill1">유　</label>
+       <input type="radio" id="Pill2" name="P_TakingPill" value="0" required checked>
+       <label for="Pill2">무</label>
+   </div>
+   <div class="form-group">
+       <label><strong>* 주요 증상</strong></label><br>
+       <input type="checkbox" name="P_Nose" value="1" /> 콧물 또는 코막힘　　　　　
+       <input type="hidden" name="P_Nose" value="0"required checked>
+       <input type="checkbox" name="P_Cough" value="1"  /> 기침 또는 가래　<br>
+       <input type="hidden" name="P_Cough" value="0"required checked>
+       <input type="checkbox" name="P_Pain" value="1"  /> 통증(두통/흉통/근육통 등)　
+       <input type="hidden" name="P_Pain" value="0"required checked>
+       <input type="checkbox" name="P_Diarrhea" value="1" /> 설사　
+       <input type="hidden" name="P_Diarrhea" value="0"required checked>
+   </div>
+   <div class="form-group">
+       <label><strong>* Covid-19 감염 유무</strong></label><br>
+       <input type="radio" id="positive" name="P_Covid19" value="1" >
+       <label for="positive">유　</label>
+       <input type="radio" id="negative" name="P_Covid19" value="0">
+       <label for="negative">무　</label>
+       <input type="radio" id="non_info" name="P_Covid19" value="2"  required checked/>
+       <label for="non_info">모름</label>
+   </div>
+   <div class="form-group">
+       <label><strong>* 고위험군 분류</strong></label><br>
+       <input type="radio" id="Group_1" name="P_HighRiskGroup" value="0" >
+       <label for="Group_1">59개월 이하의 소아　</label>
+       <input type="radio" id="Group_2" name="P_HighRiskGroup" value="1" >
+       <label for="Group_2">임산부　</label>
+       <input type="radio" id="Group_3" name="P_HighRiskGroup" value="2">
+       <label for="Group_3">만성 폐질환</label><br>
+       <input type="radio" id="Group_4" name="P_HighRiskGroup" value="3">
+       <label for="Group_4">당뇨　</label>
+       <input type="radio" id="Group_5" name="P_HighRiskGroup" value="4" >
+       <label for="Group_5">암환자　</label>
+       <input type="radio" id="Group_6" name="P_HighRiskGroup" value="5" required checked>
+       <label for="Group_6">해당사항 없음　</label>
+   </div>
+      <div class="form-group">
+        <label><strong>* 시각통증척도 (통증수치) </strong></label><br>
+        <input style="width:405px;margin-left:20px;" type="range" id="VAS" name="P_VAS" 
+				min="0" max="10" value="0" step="1" required />
+       <span id="VAS_value" style="font-size:22px;margin-left:1px;">0</span>
+       <img src="/images/VAS_Indicator 391x106.png" style="width:97%">
+      </div>
+      <br>
+      <div class="form-group">
+        <label><strong>* 개인 정보 수집 동의</strong></label><br>
+        <input type="radio" id="Info_1" name="P_Agreement" value="1" required/>
+        <label for="Info_1">예　</label>
+        <input type="radio" id="Info_2" name="P_Agreement" value="0" checked/>
+        <label for="Info_2">아니오</label>
+      </div>
+   <hr>
+      <div class="form-group text-right">
+        <button type="submit" class="btn btn-primary" style="float:left;">저장</button>
+        <button type="button" class="btn btn-secondary" onclick="history.back();">뒤로가기</button>
+        <a class="btn btn-secondary" th:href="@{/Home}" role="button">홈으로</a>
+      </div>
+    </form>
+    </div>
+<br><br>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+<script src="/webjars/bootstrap/4.5.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+```
+
+- 로그인이 되었다면 상단 메뉴의 문진표 작성 버튼 혹은 문진표 목록 페이지의 작성 버튼을 통하여 문진표 작성이 가능합니다.
+- 등록된 문진표들은 문진표 목록 페이지에서 확인 가능하며, 목록에서 문진표 번호를 클릭하면 해당 문진표의 세부 정보를 확인할 수 있습니다.
+- 문진표 세부 정보 페이지에서 수정, 삭제 버튼을 누르면 해당 기능을 수행 할 수 있습니다.
+
+
+---
+
+#### 6. 병원 예약 기능
+
+![3](./images/3-s.png)
+
+```java
 
 ```
