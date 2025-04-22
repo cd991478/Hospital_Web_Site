@@ -94,6 +94,7 @@ logging.level.org.springframework.cache=DEBUG
 ```
 
 ```java
+//Controller
 @GetMapping("/Home") // 홈 화면 이동
 	public String GotoHome(HttpSession session, Model model) {
 		String UserId = (String)session.getAttribute("UserId");
