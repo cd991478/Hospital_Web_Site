@@ -1609,7 +1609,383 @@ public class PatientController {
 - 병원을 선택하고, 예약 정보를 입력 후 예약 버튼을 누르면 예약 등록이 완료됩니다.
 - 등록된 모든 예약들은 예약 목록 페이지에서 확인이 가능하며, 예약 번호를 누르면 해당 예약 정보의 세부 정보를 확인할 수 있습니다.
 - 예약 정보 상세 화면에서 예약 취소 버튼을 눌러 해당 예약을 취소할 수 있습니다.
+
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Getter
+@Setter
+public class Appointment {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+    @ManyToOne
+    @JoinColumn(name = "H_Id", nullable = false)
+    private D_Hospital hospital;
+    @Column(columnDefinition = "VARCHAR(4)")
+    private String patientName; 
+    @Column
+    private LocalDateTime appointmentTime;
+    @Column
+    private LocalDateTime createdTime;
+}
+```
+
+```java
+@Service
+public class AppointmentService {
+
+    @Autowired
+    private AppointmentRepository apr;
+
+    public List<Appointment> findAll(){
+		   return this.apr.findAll();
+    }
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Transactional
+    public AppointmentDTO createAppointment(AppointmentDTO aDTO) {
+        User user = entityManager.find(User.class, aDTO.getUserId());
+        if (user == null) {
+            throw new IllegalArgumentException("해당 사용자 없음: " + aDTO.getUserId());
+        }
+        D_Hospital hospital = entityManager.find(D_Hospital.class, aDTO.getHospitalId());
+        if (hospital == null) {
+            throw new IllegalArgumentException("해당 병원 없음: " + aDTO.getHospitalId());
+        }
+        Appointment appointment = new Appointment();
+        appointment.setUser(user);
+        appointment.setHospital(hospital);
+        appointment.setPatientName(aDTO.getPatientName());
+        appointment.setAppointmentTime(aDTO.getAppointmentTime());
+        appointment.setCreatedTime(LocalDateTime.now());
+        entityManager.persist(appointment);
+        entityManager.flush();
+        return AppointmentMapper.toDTO(appointment);
+    }
+
+    // 예약 정보 로드
+    public AppointmentReadDTO AppointmentRead(Integer Id) throws NoSuchElementException{
+		   Appointment appointment = this.apr.findById(Id).orElseThrow();
+		   return AppointmentReadDTO.AppointmentFactory(appointment);
+	}
+
+    // 예약 삭제
+    public void AppointmentDelete(Integer Id) {
+		this.apr.deleteById(Id);
+	}
+
+    // 회원 탈퇴시 모든 예약 정보 삭제 수행
+    public void AppointmentDeleteAllByUserId(String UserId) {
+    	List<Appointment> AppointmentAll = new ArrayList<Appointment>();
+    	AppointmentAll = this.apr.findAll();
+    	Integer id;
+    	
+    	for(Appointment app : AppointmentAll) {
+    		if((UserId.equals(app.getUser().getUserId()))) {
+    			id = app.getId();
+    			this.apr.deleteById(id);
+    		}
+    	}
+    	
+    }
+}
+```
   
 ```java
+@Controller
+public class AppointmentController {
+	@Autowired
+        private D_HospitalRepository d_hr;
+    
+	@Autowired
+        private AppointmentService appointmentService;
+	
+	@Autowired
+	private AppointmentRepository apr;
+
+	@Autowired
+	private UserService uls;
+	
+	@Autowired
+	private D_HospitalService d_hs;
+	
+	@Autowired
+	private PatientService pis;
+
+	// 예약 페이지로 이동시 수행
+	@GetMapping("/AppointmentPage/Input")
+	public ModelAndView searchHospitals(
+    		 @RequestParam(name="page", required=false) Integer page,
+           	 @RequestParam(value = "H_Categorie", required = false) String H_Categorie,
+           	 @RequestParam(value = "H_Region", required = false) String H_Region,
+            	 HttpSession session, Model model) {
+    	String UserId = (String)session.getAttribute("UserId");
+    	String UserName = (String)session.getAttribute("UserName");
+        final int PageSize = 10;
+
+        if(H_Categorie == null || H_Region == null) {
+        	ModelAndView mav = new ModelAndView();
+            mav.addObject("D_HospitalList", null);
+            mav.addObject("UserName",UserName);
+            mav.setViewName("AppointmentPage/Input");
+            return mav;
+        }
+
+        if (page == null || page < 0) {
+	        page = 0;
+	}
+
+        List<D_HospitalListDTO> HospitalList = this.d_hs.D_HospitalListSearchPage(page, PageSize, H_Categorie, H_Region);
+        
+        List<D_Hospital> allhospital = this.d_hr.findAll();
+
+        long totalElements = allhospital.stream()
+                .filter(hospital -> hospital.getH_Region().equals(H_Region) && hospital.getH_Categorie().contains(H_Categorie))
+                .count();
+
+	    int totalPages = (int) Math.ceil((double) totalElements / PageSize);
+	    int currentPage = page;
+	    if(totalElements == 0) {
+	    	HospitalList = null;
+	 }
+        
+	    
+	    model.addAttribute("D_HospitalList", HospitalList);
+	    model.addAttribute("totalPages", totalPages);
+	    model.addAttribute("totalElements", totalElements);
+	    model.addAttribute("currentPage", currentPage);
+	    model.addAttribute("pageSize", PageSize);
+	    
+	    ModelAndView mav = new ModelAndView();
+	    mav.addObject("H_Categorie",(String)H_Categorie);
+	    mav.addObject("H_Region",(String)H_Region);
+	    mav.setViewName("AppointmentPage/Input");
+	    return mav;
+	    
+    }
+
+    // 예약 페이지에서 예약 버튼 누르면 수행
+    @PostMapping("/AppointmentPage/Reserve")
+    public String reserveAppointment(@RequestParam("selectedHospitals") Integer hospitalId,
+                                     @RequestParam(value = "patientName") String patientName,
+                                     @RequestParam(value = "appointmentTime") LocalDateTime appointmentTime,
+                                     HttpSession session) {                        
+    	String userId = (String) session.getAttribute("UserId");
+
+        AppointmentDTO appointmentDTO = new AppointmentDTO();
+        appointmentDTO.setHospitalId(hospitalId);
+        appointmentDTO.setPatientName(patientName);
+        appointmentDTO.setAppointmentTime(appointmentTime);
+        appointmentDTO.setUserId(userId);
+        AppointmentDTO savedAppointment = appointmentService.createAppointment(appointmentDTO);
+        Integer id = savedAppointment.getId();
+
+        return String.format("redirect:/AppointmentPage/Result/%s", id);
+    }
+    
+    @GetMapping("/AppointmentPage/Result/{id}") // 예약 버튼 누를시 결과 화면 이동
+	public ModelAndView AppointmentResult(@PathVariable("id") Integer Id) throws NoSuchElementException{
+	      ModelAndView mav = new ModelAndView();
+	      UserReadDTO uiDTO = new UserReadDTO();
+	      AppointmentReadDTO aprDTO = this.appointmentService.AppointmentRead(Id);
+	      uiDTO = this.uls.UserInfoRead(aprDTO.getUserId());
+	      Integer id = aprDTO.getHospitalId();
+	      D_HospitalReadDTO d_hrDTO = this.d_hs.d_hrRead(id);
+
+	      mav.addObject("hospital", d_hrDTO);
+	      mav.addObject("UserInfo",uiDTO);
+	      mav.addObject("AppointmentInfo",aprDTO);
+	      mav.setViewName("/AppointmentPage/Result");
+	      return mav;
+     }
+
+    // 예약 삭제 버튼 누를시 수행
+    @GetMapping("/AppointmentPage/Delete")
+    public String PatientInfoDelete(@RequestParam("Id") Integer Id, HttpSession session, Model model) {
+	this.appointmentService.AppointmentDelete(Id);
+	return "redirect:/AppointmentPage/List";
+		 
+    }
+}
 
 ```
+
+```html
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/AppointmentPage/Header.html"></header>
+
+<div class="container mt-5" style="max-width:100%;">
+<h3 class="text-center">병원 예약</h3>
+
+<hr>
+<div class="container d-flex justify-content-center align-items-center text-left">
+<div class="row align-items-start">
+<div class="col alert alert-primary" style="max-width:300px;min-width:300px;min-height:280px;max-height:280px;">
+<form id="search" th:action="@{/AppointmentPage/Input}" method="get">
+    <label for="H_Categorie"><strong>* 진료 과목</strong></label>
+    <select form="search" id="H_Categorie" name="H_Categorie" class="form-control">
+        <option value="" disabled>진료 과목을 선택하세요</option>
+        <option value="내과" th:selected="${H_Categorie == '내과'}">내과</option>
+    	<option value="소아" th:selected="${H_Categorie == '소아'}">소아과</option>
+    	<option value="정형" th:selected="${H_Categorie == '정형'}">정형외과</option>
+    	<option value="산부인" th:selected="${H_Categorie == '산부인과'}">산부인과</option>
+    	<option value="피부" th:selected="${H_Categorie == '피부'}">피부과</option>
+    	<option value="이비인후" th:selected="${H_Categorie == '이비인후'}">이비인후과</option>
+    	<option value="한의원" th:selected="${H_Categorie == '한의원'}">한의원</option>
+    	<option value="성형" th:selected="${H_Categorie == '성형'}">성형외과</option>
+    	<option value="비뇨" th:selected="${H_Categorie == '비뇨'}">비뇨의학과</option>
+    	<option value="가정의학과" th:selected="${H_Categorie == '가정의학과'}">가정의학과</option>
+    	<option value="건강검진" th:selected="${H_Categorie == '건강검진'}">건강검진</option>
+    	<option value="대학병원" th:selected="${H_Categorie == '대학병원'}">대학병원</option>
+    	<option value="마취통증의학과" th:selected="${H_Categorie == '마취통증'}">마취통증의학과</option>
+    	<option value="병리과" th:selected="${H_Categorie == '병리과'}">병리과</option>
+    	<option value="요양병원" th:selected="${H_Categorie == '요양병원'}">요양병원</option>
+    	<option value="유방외과" th:selected="${H_Categorie == '유방외과'}">유방외과</option>
+    	<option value="병리과" th:selected="${H_Categorie == '병리'}">병리과</option>
+    	<option value="재활" th:selected="${H_Categorie == '재활'}">재활의학과</option>
+    	<option value="정신건강" th:selected="${H_Categorie == '정신건강'}">정신건강의학과</option>
+    	<option value="종합 의원" th:selected="${H_Categorie == '종합 의원'}">종합 의원</option>
+    	<option value="항문외과" th:selected="${H_Categorie == '항문외과'}">항문외과</option>
+    	<option value="흉" th:selected="${H_Categorie == '흉부외과'}">흉부외과</option>
+    </select>
+    <br>
+    <label for="H_Region"><strong>* 지역</strong></label>
+    <select form="search" id="H_Region" name="H_Region" class="form-control">
+        <option value="" disabled>지역을 선택하세요</option>
+        <option value="달서구" th:selected="${H_Region == '달서구'}">달서구</option>
+        <option value="동구" th:selected="${H_Region == '동구'}">동구</option>
+        <option value="서구" th:selected="${H_Region == '서구'}">서구</option>
+        <option value="수성구" th:selected="${H_Region == '수성구'}">수성구</option>
+        <option value="남구" th:selected="${H_Region == '남구'}">남구</option>
+        <option value="북구" th:selected="${H_Region == '북구'}">북구</option>
+        <option value="달성군" th:selected="${H_Region == '달성군'}">달성군</option>
+    </select>
+	<br>
+	<div class="container text-center">
+    <button form="search" type="submit" class="btn btn-primary" style="width:100px;">검색</button>
+    <div class="text-center mt-2" th:if="${D_HospitalList == null}" th:text="|병원을 검색해주세요.|"></div>
+   	<div th:if="${D_HospitalList != null}"><p></p></div>
+    </div>
+</form>
+</div>
+<div th:if="${D_HospitalList != null}" class="col alert alert-success" style="max-width:300px;min-width:300px;min-height:280px;max-height:280px;">
+<div >
+<label for="patientName"><strong>* 예약자 이름</strong></label>
+    <input form="run" type="text" class="form-control" id="patientName" name="patientName" th:value="${UserName}" required>
+<br>
+    <label for="appointmentTime"><strong>* 예약 일시</strong></label>
+    <input form="run" type="datetime-local" class="form-control" id="appointmentTime" name="appointmentTime" required>
+    <br>
+    <div class="text-center container">
+<button form="run" type="submit" class="btn btn-success" style="width:100px;">예약</button>
+<div class="mt-2" th:text="|예약 날짜와 병원을 선택하세요.|"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="text-right mt-4">
+            <button type="button" class="btn btn-secondary" onclick="history.back();">뒤로가기</button>
+            <a th:href="@{/Home}" class="btn btn-secondary">홈으로</a>
+</div>
+<br>
+<hr>
+<br>
+<form id="run" th:action="@{/AppointmentPage/Reserve}" method="post">
+<div class="container" style="max-width:100%;">
+<h3 class="text-center">검색된 병원 목록</h3>
+	<div class="table-responsive" style="overflow-x: auto;">
+	<table class="table table-striped table-bordered mt-4 text-center">
+		<thead class="custom-thead">
+            <tr>
+				<th style="min-width:10px;">선택</th>
+				<th style="min-width:75px;">지역</th>
+				<th>병원이름</th>
+				<th>분류</th>
+				<th>카테고리</th>
+				<th>총 병상</th>
+				<th>일반병상</th>
+				<th style="min-width:110px;" >정신과병상</th>
+				<th>요양병상</th>
+				<th style="min-width:130px;" >중환자실병상</th>
+				<th>격리병상</th>
+				<th>무균병상</th>
+				<th>전화</th>
+				<th>주소</th>
+				<th>지도 보기</th> 
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="hospital : ${D_HospitalList}">
+                <td style="min-width:10px;" class="text-center"><input form="run" type="radio" name="selectedHospitals" th:value="${hospital.H_Id}" required/></td>
+				<td th:text="${hospital.H_Region}"></td>
+				<td th:text="${hospital.H_Name}"></td>
+				<td th:text="${hospital.H_Department}"></td>
+				<td th:text="${hospital.H_Categorie}"></td>
+				<td th:text="${hospital.Bed_Total}"></td>
+				<td th:text="${hospital.Bed_General}"></td>
+				<td style="min-width:110px;" th:text="${hospital.Bed_Psy}"></td>
+				<td th:text="${hospital.Bed_Nursing}"></td>
+				<td style="min-width:130px;" th:text="${hospital.Bed_Intensive}"></td>
+				<td th:text="${hospital.Bed_Isolation}"></td>
+				<td th:text="${hospital.Bed_Clean}"></td>
+				<td th:text="${hospital.H_Phone_Number}"></td>
+                <td th:text="${hospital.H_Address}"></td>
+                <td>
+    				<button type="button" class="btn btn-primary" 
+      				  th:attr="onclick=|showMap(${hospital.H_Latitude}, ${hospital.H_Longitude}, '${hospital.H_Name}')|">
+       				  지도 보기
+   					</button>
+				</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="text-center" th:if="${D_HospitalList == null}" th:text="|검색된 병원이 없습니다.|"></div>
+	</div>
+</div>
+</form>
+   </div>
+   <hr>
+<div class="d-flex justify-content-center mt-4" th:if="${D_HospitalList != null}">
+  <ul class="pagination">
+<li class="page-item" th:classappend="${currentPage == 0} ? 'disabled' : ''">
+  <a class="page-link" th:href="@{/AppointmentPage/Input(page=${currentPage - 1}, H_Categorie=${H_Categorie}, H_Region=${H_Region})}" aria-label="Previous">
+    <span aria-hidden="true">&laquo;</span>
+  </a>
+</li>
+<th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+  <li class="page-item" th:classappend="${i == currentPage} ? 'active' : ''">
+    <a class="page-link" th:href="@{/AppointmentPage/Input(page=${i}, H_Categorie=${H_Categorie}, H_Region=${H_Region})}" th:text="${i + 1}"></a>
+  </li>
+</th:block>
+<li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled' : ''">
+  <a class="page-link" th:href="@{/AppointmentPage/Input(page=${currentPage + 1}, H_Categorie=${H_Categorie}, H_Region=${H_Region})}" aria-label="Next">
+    <span aria-hidden="true">&raquo;</span>
+  </a>
+</li>
+  </ul>
+</div>
+<div id="mapModal" style="display:none; position:fixed; top:50px; left:50%; transform:translateX(-50%); z-index:1000; background:#fff; padding:10px; box-shadow:0px 0px 10px rgba(0,0,0,0.5);">
+    <div id="map" style="width:400px; height:300px;"></div>
+    <button onclick="closeMap()" style="position:absolute; top:5px; right:5px;">닫기</button>
+</div>
+```
+
+---
+
+#### 7. Covid-19 환자 통계 차트 조회 기능 (데이터 시각화)
+
+![6](./images/6-s.png)
+
+- 
+
