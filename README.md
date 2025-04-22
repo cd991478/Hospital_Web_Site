@@ -20,7 +20,8 @@
 #### 1. 웹 사이트 홈
 ![1](./images/1.png)
 
-- 홈 화면의 상단에 주요 메뉴들이 있으며, 메뉴에 마우스를 올리면 하위 메뉴들이 열리고, 클릭하면 해당 세부 메뉴로 이동됩니다.
+- 홈 화면 상단의 네비게이션바에 주요 메뉴들이 있으며, 메뉴에 마우스를 올리면 하위 메뉴들이 열리고, 클릭하면 해당 세부 메뉴로 이동됩니다.
+- 중간 및 하단에는 이미지 배너와 게시판 일부 정보를 확인할 수 있습니다.
 
 ```java
 // build.gradle
@@ -107,7 +108,7 @@ logging.level.org.springframework.cache=DEBUG
 			model.addAttribute("UserId",null);
 			model.addAttribute("UserName",null);
 		}
-		   //  의료 속보 데이터 추가
+
         List<SpotNewsResponseDTO> spotNewsList = sns.getAllNews();
         model.addAttribute("spotNewsList", spotNewsList);
         model.addAttribute("recentPosts", boardService.RecentBoardList());
