@@ -9,11 +9,9 @@
 ### - 주요 기능
 - 회원 가입, 회원 탈퇴, 로그인, 회원 정보 수정, 아이디 비밀번호 찾기 기능
 - Covid-19 문진표 등록, 조회, 수정, 삭제 기능 (회원 전용)
-- 병원 예약 및 취소기능 (회원 전용)
+- 병원 예약 및 취소 기능 (회원 전용)
 - 지역, 진료과목별 병원 검색 및 전체 조회 기능
-- 등록된 전체 Covid-19 환자의 성별, 연령대별 데이터 차트 조회 기능
-- 등록된 대구 병원의 지역별, 진료과목별 차트 조회 기능
-- 관리자 전용 기능
+- 등록된 전체 Covid-19 환자의 성별, 연령대별 데이터 통계 차트 조회 기능
 - 공지사항 게시판 기능 (관리자의 게시글 등록, 수정, 삭제 기능)
 
 
@@ -1304,7 +1302,7 @@ public class PatientService {
 public class PatientController {
 
 	@Autowired
-	private PatientRepository pir;
+	private PatientRepository pir; // 리포지토리는 서비스에서 사용하는게 적합
 	@Autowired
 	private PatientService pis;
 	@Autowired
@@ -1983,9 +1981,588 @@ public class AppointmentController {
 
 ---
 
-#### 7. Covid-19 환자 통계 차트 조회 기능 (데이터 시각화)
+#### 7. 통계 차트 조회
 
-![6](./images/6-s.png)
+![10](./images/10-s.png)
 
-- 
+- 화면 상단 네비게이션바의 통계 자료 메뉴를 통하여 각종 통계 차트를 조회할 수 있습니다.
+- Covid-19 세부 통계 차트에서는, 연령대와 성별을 선택 후 조건 적용 버튼을 누르면 조건에 맞는 통계 차트가 하단에 출력됩니다.
+- 연령대와 성별 둘중 하나만 선택하여도 그에 맞는 차트가 출력되며, 모두 선택하지 않으면 전체 데이터가 출력됩니다.
 
+```java
+@Service
+public class ChartService {
+	
+	@Autowired
+	private PatientService ps;
+	@Autowired
+	private D_HospitalService d_hs;
+	
+	public Map<String, Object> GetAllChart(String Gender, String AgeRange){
+         
+         Map<String, Object> stats = new HashMap<>();
+         
+         Integer Total=0; /*문진표DB 총합*/ 
+         
+         Integer Male=0; /*남성*/ 
+         Integer Female=0; /*여성*/ 
+         
+         Integer Age_0to9=0; /*10살 미만*/ 
+         Integer Age_10to19=0; /*10대*/ 
+         Integer Age_20to29=0; /*20대*/ 
+         Integer Age_30to39=0; /*30대*/ 
+         Integer Age_40to49=0; /*40대*/ 
+         Integer Age_50to59=0; /*50대*/ 
+         Integer Age_60to69=0; /*60대*/ 
+         Integer Age_70to99=0; /*70대 이상*/ 
+         
+         /*약복용 유무*/ 
+         Integer TakingPill_Yes=0;
+         Integer TakingPill_No=0;
+         
+         /*증상 분류*/ 
+         Integer Nose=0; /*콧물/코막힘*/ 
+         Integer Cough=0; /*기침*/ 	         
+         Integer Pain=0; /*통증(두통/흉통 등)*/
+         Integer Diarrhea=0; /*설사*/ 
+         Integer Nothing=0; /*해당사항 없음*/ 
+         
+         /*고위험군 분류*/ 
+         Integer HighRiskGroup_Under59=0; /*59개월 미만*/ 
+         Integer HighRiskGroup_Pregnancy=0; /*임산부*/ 
+         Integer HighRiskGroup_Lung=0; /*만성 폐질환*/ 
+         Integer HighRiskGroup_Diebete=0; /*당뇨*/ 
+         Integer HighRiskGroup_Cancer=0; /*암환자*/ 
+         Integer HighRiskGroup_None=0; /*해당사항없음*/ 
+         
+         /*시각통증척도 0~10*/
+         Integer VAS_0=0;
+         Integer VAS_1=0;	        
+         Integer VAS_2=0;
+         Integer VAS_3=0;	         
+         Integer VAS_4=0;
+         Integer VAS_5=0;	         
+         Integer VAS_6=0;
+         Integer VAS_7=0; 
+         Integer VAS_8=0;
+         Integer VAS_9=0;
+         Integer VAS_10=0;
+         Integer VAS_Sum=0;
+         
+         double VAS_Avg=0.00; /*시각통증척도 평균*/
+         
+         List<Patient> patient = ps.findAll();
+         
+         // 성별 및 나이대에 맞는 환자들만 필터링
+          for (Patient p : patient) {
+        	  
+              boolean genderMatch = true;
+              boolean ageMatch = true;
+              
+              // 성별 필터링
+		if (Gender != null) {				  
+			 String GenderNumber;
+			 if(p.getP_Gender() == 0) 
+			 	{GenderNumber = "M";}
+		 	 else 
+				{GenderNumber = "F";}		
+		  
+			 genderMatch = GenderNumber.equals(Gender);
+		 }
+				  
+              // 나이대 필터링
+              if (AgeRange != null && !AgeRange.isEmpty()) {
+            	  
+                  int age = p.getP_Age(); //DB에 있는 모든 환자 정보를 가져와 분류
+                  
+                  switch (AgeRange) {
+                      case "0to9":ageMatch = (age >= 0 && age < 10);
+                          break;
+                      case "10to19":ageMatch = (age >= 10 && age < 20);
+                          break;
+                      case "20to29":ageMatch = (age >= 20 && age < 30);
+                          break;
+                      case "30to39":ageMatch = (age >= 30 && age < 40);
+                          break;
+                      case "40to49":ageMatch = (age >= 40 && age < 50);
+                          break;
+                      case "50to59":ageMatch = (age >= 50 && age < 60);
+                          break;
+                      case "60to69":ageMatch = (age >= 60 && age < 70);
+                          break;
+                      case "70to99":ageMatch = (age >= 70 && age < 100);
+                          break;
+                      default:ageMatch = true;  // 나이대에 제한이 없으면 필터링하지 않음
+                  }
+              }
+
+              // 성별과 나이대가 모두 일치하는 경우에만 데이터 처리
+              if (genderMatch && ageMatch) {
+                  Total++;
+                  // 성별 통계
+                  if (p.getP_Gender() == 1) 
+                  {Female++;} 
+                  else 
+                  {Male++;}
+                  
+                  // 나이대 통계
+                  if (p.getP_Age() >= 0 && p.getP_Age() < 10) {
+                      Age_0to9++; //10세 미만
+                  } else if (p.getP_Age() >= 10 && p.getP_Age() < 20) {
+                      Age_10to19++; //10대
+                  } else if (p.getP_Age() >= 20 && p.getP_Age() < 30) {
+                      Age_20to29++; //20대
+                  } else if (p.getP_Age() >= 30 && p.getP_Age() < 40) {
+                      Age_30to39++; //30대
+                  } else if (p.getP_Age() >= 40 && p.getP_Age() < 50) {
+                      Age_40to49++; //40대
+                  } else if (p.getP_Age() >= 50 && p.getP_Age() < 60) {
+                      Age_50to59++; //50대
+                  } else if (p.getP_Age() >= 60 && p.getP_Age() < 70) {
+                      Age_60to69++; //60대
+                  } else {Age_70to99++; /*70대(나머지)*/ }
+
+                  // 기타 통계는 기존의 코드와 동일하게 계산
+                  if (p.getP_TakingPill() == 1) {TakingPill_Yes++;} 
+                  else {TakingPill_No++;}
+                  
+                  if (p.getP_Nose() == 1) {Nose++;}
+                  if (p.getP_Cough() == 1) {Cough++;}
+                  if (p.getP_Pain() == 1) {Pain++;}
+                  if (p.getP_Diarrhea() == 1) {Diarrhea++;}
+                  if (p.getP_Nose() == 0 && p.getP_Cough() == 0 
+                	  && p.getP_Pain() == 0 && p.getP_Diarrhea() == 0) {
+                      Nothing++;}
+                  
+                  //고위험군 카운트하기
+                  if (p.getP_HighRiskGroup() == 0) {HighRiskGroup_Under59++;} 
+                  else if (p.getP_HighRiskGroup() == 1) {HighRiskGroup_Pregnancy++;} 
+                  else if (p.getP_HighRiskGroup() == 2) {HighRiskGroup_Lung++;} 
+                  else if (p.getP_HighRiskGroup() == 3) {HighRiskGroup_Diebete++;} 
+                  else if (p.getP_HighRiskGroup() == 4) {HighRiskGroup_Cancer++;} 
+                  else if (p.getP_HighRiskGroup() == 5) {HighRiskGroup_None++;}
+                  
+                  //환자별 VAS 점수 카운트
+                  if (p.getP_VAS() == 0) {VAS_0++;} 
+                  else if (p.getP_VAS() == 1) {VAS_1++;} 
+                  else if (p.getP_VAS() == 2) {VAS_2++;} 
+                  else if (p.getP_VAS() == 3) {VAS_3++;} 
+                  else if (p.getP_VAS() == 4) {VAS_4++;} 
+                  else if (p.getP_VAS() == 5) {VAS_5++;} 
+                  else if (p.getP_VAS() == 6) {VAS_6++;} 
+                  else if (p.getP_VAS() == 7) {VAS_7++;} 
+                  else if (p.getP_VAS() == 8) {VAS_8++;} 
+                  else if (p.getP_VAS() == 9) {VAS_9++;} 
+                  else {VAS_10++;}
+                  
+                  VAS_Sum += p.getP_VAS();
+              }
+          }
+          
+         if(Total > 0) {
+            VAS_Avg = (double)((double)VAS_Sum / (double)Total);
+            VAS_Avg = Math.round(VAS_Avg * 100.0) / 100.0;
+         }
+         
+         //카운트 Map에 투입
+         stats.put("Total", Total);
+         stats.put("Male", Male);
+         stats.put("Female", Female);
+         stats.put("Age_0to9", Age_0to9);
+         stats.put("Age_10to19", Age_10to19);
+         stats.put("Age_20to29", Age_20to29);
+         stats.put("Age_30to39", Age_30to39);
+         stats.put("Age_40to49", Age_40to49);
+         stats.put("Age_50to59", Age_50to59);
+         stats.put("Age_60to69", Age_60to69);
+         stats.put("Age_70to99", Age_70to99);
+         stats.put("TakingPill_Yes", TakingPill_Yes);
+         stats.put("TakingPill_No", TakingPill_No);
+         stats.put("Nose", Nose);
+         stats.put("Cough", Cough);
+         stats.put("Pain", Pain);
+         stats.put("Diarrhea", Diarrhea);
+         stats.put("Nothing", Nothing);
+         stats.put("HighRiskGroup_Under59", HighRiskGroup_Under59);
+         stats.put("HighRiskGroup_Pregnancy", HighRiskGroup_Pregnancy);
+         stats.put("HighRiskGroup_Lung", HighRiskGroup_Lung);
+         stats.put("HighRiskGroup_Diebete", HighRiskGroup_Diebete);
+         stats.put("HighRiskGroup_Cancer", HighRiskGroup_Cancer);
+         stats.put("HighRiskGroup_None", HighRiskGroup_None);
+         stats.put("VAS_0", VAS_0);
+         stats.put("VAS_1", VAS_1);
+         stats.put("VAS_2", VAS_2);
+         stats.put("VAS_3", VAS_3);
+         stats.put("VAS_4", VAS_4);
+         stats.put("VAS_5", VAS_5);
+         stats.put("VAS_6", VAS_6);
+         stats.put("VAS_7", VAS_7);
+         stats.put("VAS_8", VAS_8);
+         stats.put("VAS_9", VAS_9);
+         stats.put("VAS_10", VAS_10);
+         stats.put("VAS_Sum", VAS_Sum);
+         stats.put("VAS_Avg", VAS_Avg);
+         
+         return stats;
+      }
+}
+```
+
+```java
+@Controller
+public class ChartController {
+
+		@Autowired
+		private ChartService cs;
+
+		// covid-19 전체 통계
+		 @GetMapping("/Chart/ShowPatient")
+		    public ModelAndView GotoShowPatient() {
+		       ModelAndView mav = new ModelAndView();
+		       Map<String, Object> stats = new HashMap<>();
+		       stats = cs.GetAllChart(null,null);
+		       mav.addObject("stats",stats);
+		       mav.setViewName("Chart/ShowPatient");
+		       return mav;
+		    }
+		    
+		 // covid-19 세부 통계
+		    @GetMapping("/Chart/DetailPatient")
+		    public String GotoDetailPatient() {
+		       return "/Chart/DetailPatient";
+		    }
+		    
+		  // covid-19 세부 통계 필터 적용
+		    @PostMapping("/Chart/DetailPatient")
+		    public ModelAndView GotoDetailPatient(@RequestParam(name="Gender", required=false) String Gender,
+		                                 @RequestParam(name="AgeRange", required=false) String AgeRange){
+		       ModelAndView mav = new ModelAndView();
+		       Map<String, Object> stats = new HashMap<>();
+		       stats = cs.GetAllChart(Gender, AgeRange);
+		       mav.addObject("Gender", Gender);
+		       mav.addObject("AgeRange", AgeRange);
+		       mav.addObject("stats",stats);
+		       mav.setViewName("Chart/DetailPatient");
+		       return mav;
+		    }
+	
+```
+
+```html
+<body>
+<div th:replace="fragments/navbar :: navbar"></div>
+<header th:insert="/BoardPage/Header.html"></header>
+<div class="container mt-5 text-center" style="max-width:100%">
+       <h3>COVID-19 문진표 세부 통계</h3>
+       <hr>
+       <form method="POST" th:action="@{/Chart/DetailPatient}">
+       <div class="form-group">
+            <label><strong>* 성별</strong></label><br>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="Gender" value="F" th:checked="${Gender == 'F'}">
+                <label class="form-check-label">여성</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="Gender" value="M" th:checked="${Gender == 'M'}">
+                <label class="form-check-label">남성</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label><strong>* 연령대</strong></label><br>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="0to9" th:checked="${AgeRange == '0to9'}">
+                <label class="form-check-label">10세 이하</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="10to19" th:checked="${AgeRange == '10to19'}">
+                <label class="form-check-label">10대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="20to29" th:checked="${AgeRange == '20to29'}">
+                <label class="form-check-label">20대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="30to39" th:checked="${AgeRange == '30to39'}">
+                <label class="form-check-label">30대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="40to49" th:checked="${AgeRange == '40to49'}">
+                <label class="form-check-label">40대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="50to59" th:checked="${AgeRange == '50to59'}">
+                <label class="form-check-label">50대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="60to69" th:checked="${AgeRange == '60to69'}">
+                <label class="form-check-label">60대</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="AgeRange" value="70to99" th:checked="${AgeRange == '70to99'}">
+                <label class="form-check-label">70대 이상</label>
+            </div>
+        </div>
+         <div class="form-group text-center">
+        <button type="submit" class="btn btn-primary">조건 적용</button>
+        <button type="button" class="btn btn-primary" onclick="ResetSelect()">선택 해제</button>
+        
+      </div>
+         </form>
+         <div th:if="${stats != null}">
+         <hr>
+         <b>검색 조건 : </b>
+         <b th:if="${AgeRange == '0to9'}"> 10세 이하 </b>
+         <b th:if="${AgeRange == '10to19'}"> 10대 </b>
+         <b th:if="${AgeRange == '20to29'}"> 20대 </b>
+         <b th:if="${AgeRange == '30to39'}"> 30대 </b>
+         <b th:if="${AgeRange == '40to49'}"> 40대 </b>
+         <b th:if="${AgeRange == '50to59'}"> 50대 </b>
+         <b th:if="${AgeRange == '60to69'}"> 60대 </b>
+         <b th:if="${AgeRange == '70to99'}"> 70대 이상 </b>
+         
+         <b th:if="${Gender == 'F'}">여성</b>
+         <b th:if="${Gender == 'M'}">남성</b>
+         
+         <b th:if="${AgeRange == null and Gender == null}"> 없음</b>
+         <div th:text="|환자 수 : ${stats.Total}명|"></div>
+    <br>
+    <div th:if="${Gender == null}">
+    <hr>
+        <h5>성별</h5>
+        <svg class="alert alert-secondary"  height="300" id="genderChart"></svg>
+    </div>
+    <hr>
+    <div th:if="${AgeRange == null}">
+    <hr>
+        <h5>연령대</h5>
+        <svg class="alert alert-secondary" height="300" id="ageChart"></svg>
+    </div>
+    <hr>
+    <div>
+        <h5>감기약 복용 여부</h5>
+        <svg class="alert alert-secondary" height="300" id="pillChart"></svg>
+    </div>
+    <hr>
+    <div>
+        <h5>증상</h5>
+        <svg class="alert alert-secondary" height="300" id="symptomChart"></svg>
+    </div>
+    <hr>
+    <div>
+        <h5>고위험군</h5>
+        <svg class="alert alert-secondary"  height="300" id="riskGroupChart"></svg>
+    </div>
+    <hr>
+    <div>
+        <h5>통증수치 (VAS)</h5>
+        <svg class="alert alert-secondary" height="300" id="VASChart"></svg>
+    </div>
+    
+    <div>
+       <h5 th:text="'통증수치 평균 : ' + ${#numbers.formatDecimal(stats.VAS_Avg, 1, 2)}"></h5>
+   </div>
+    <hr>
+    </div>
+    <div class="form-group text-right">
+        <button type="button" class="btn btn-primary" onclick="downloadAsImage();" style="float:left;">다운로드</button>
+        <button type="button" class="btn btn-secondary" onclick="history.back();">뒤로가기</button>
+        <a class="btn btn-secondary" th:href="@{/Home}" role="button">홈으로</a>
+    </div>
+    </div>
+    <br><br>
+<script th:inline="javascript">
+        var count = /*[[${stats}]]*/ {};
+        var genderData = [
+            { label: "남성", value: count.Male, color: "lightskyblue" },
+            { label: "여성", value: count.Female, color: "pink" }
+        ];
+        var ageData = [
+            { label:"10대 이하", value: count.Age_0to9, color: "rgb(255,255,127)"},
+            { label:"10대", value: count.Age_10to19, color: "rgb(255,255,127)"},
+            { label:"20대", value: count.Age_20to29, color: "#ADD8E6"},
+            { label:"30대", value: count.Age_30to39, color: "#ADD8E6"},
+            { label:"40대", value: count.Age_40to49, color: "#90EE90"},
+            { label:"50대", value: count.Age_50to59, color: "#90EE90"},
+            { label:"60대", value: count.Age_60to69, color: "#FFB6C1"},
+            { label:"70대 이상", value: count.Age_70to99, color: "#FFB6C1"}
+        ];
+
+        var pillData = [
+            { label: "복용", value: count.TakingPill_Yes, color: "lightgreen" },
+            { label: "미복용", value: count.TakingPill_No, color: "lightcoral" }
+        ];
+
+        var symptomData = [
+            { label: "콧물/코막힘", value: count.Nose, color: "skyblue" },
+            { label: "기침/가래", value: count.Cough, color: "lightyellow" },
+            { label: "통증", value: count.Pain, color: "#FF7F7F" },
+            { label: "설사", value: count.Diarrhea, color: "brown" },
+            { label: "해당없음", value: count.Nothing, color: "lightgray" }
+        ];
+
+        var riskGroupData = [
+            { label: "소아", value: count.HighRiskGroup_Under59, color: "yellow" },
+            { label: "임산부", value: count.HighRiskGroup_Pregnancy, color: "pink" },
+            { label: "폐질환", value: count.HighRiskGroup_Lung, color: "gray" },
+            { label: "당뇨", value: count.HighRiskGroup_Diebete, color: "orange" },
+            { label: "암환자", value: count.HighRiskGroup_Cancer, color: "purple" },
+            { label: "해당없음", value: count.HighRiskGroup_None, color: "lightgray" }
+        ];
+      
+        var VASData = [
+            {label: "0단계", value: count.VAS_0, color: "#7CFC00"},   // 라이트 그린
+            {label: "1단계", value: count.VAS_1, color: "#90EE90"},   // 연한 초록
+            {label: "2단계", value: count.VAS_2, color: "#ADFF2F"},   // 그린 옐로우
+            {label: "3단계", value: count.VAS_3, color: "#FFFF00"},   // 노란색
+            {label: "4단계", value: count.VAS_4, color: "#FFD700"},   // 금색
+            {label: "5단계", value: count.VAS_5, color: "#FF8C00"},   // 다크 오렌지
+            {label: "6단계", value: count.VAS_6, color: "#FF6347"},   // 토마토
+            {label: "7단계", value: count.VAS_7, color: "#FF4500"},   // 오렌지 레드
+            {label: "8단계", value: count.VAS_8, color: "#FF0000"},   // 빨간색
+            {label: "9단계", value: count.VAS_9, color: "#DC143C"},   // 진한 빨강
+            {label: "10단계", value: count.VAS_10, color: "#8B0000"}  // 다크 레드
+        ];
+
+        
+        function drawBarChart(svgId, data, maxValue) {
+            var svg = d3.select(`#${svgId}`);
+           
+            var YBarWidth = 50;
+            
+            if(data.length >= 8){
+               var barWidth = 880 / data.length;
+                var gap = 200 / data.length;
+                var chartWidth = barWidth * data.length + gap * data.length + 35 + YBarWidth*2;  // 차트 전체 너비 계산
+            }
+            else{
+               var barWidth = 150;
+               var gap = 30;
+               var chartWidth = barWidth * data.length + gap * data.length + 15 + YBarWidth*2;
+               
+            }
+            var maxBarHeight = 250; // 최대 막대 높이
+            
+            // 차트의 width 동적 설정
+            svg.attr("width", chartWidth);
+
+            // scaleFactor는 데이터의 최대값에 따라 동적으로 계산
+            var scaleFactor = maxBarHeight / maxValue * 0.8;
+
+            // 데이터가 모두 0일 경우 비율을 1로 설정
+            if (maxValue === 0) {
+                scaleFactor = 1;
+            }
+
+            var startY = maxBarHeight;
+            
+            var index = data.length;
+            var size = new Array(index);
+
+            
+         // 세로로 막대그래프 생성
+            svg.selectAll("rect")
+                .data(data)
+                .enter()
+                .append("rect")
+                .attr("x", function(d, i) { return YBarWidth + i * (barWidth + gap); })
+                .attr("y", function(d) { return startY - d.value * scaleFactor; })
+                .attr("width", barWidth)
+                .attr("height", function(d, i) {return size[i]=d.value * scaleFactor;})
+                .attr("fill", function(d) { return d.color; })
+            .on("mouseover",function(){
+               d3.select(this)
+                  .style("fill","white");
+            })
+            .on("mouseout",function(){
+               d3.select(this)
+                  .style("fill",function(d){return d.color;});
+            });
+         
+               var yScale = d3.scale.linear()
+                     .domain([0,maxValue+maxValue*0.25])
+                     .range([maxBarHeight,0]);
+                     
+              svg.append("g")
+                       .attr("class","axis")
+                       .attr("transform","translate(36,0)")
+                       .call(
+                             d3.svg.axis()
+                               .scale(yScale)
+                               .orient("left")
+                          );
+              
+           svg.append("rect")
+               .attr("class","axis_x")
+               .attr("width",barWidth*data.length + gap*(data.length-1) +35)
+               .attr("height","1")
+               .attr("transform","translate(35,"+(maxBarHeight-0.5)+")");
+
+            // x축 레이블 추가 (항목 이름)
+            svg.selectAll("text.label")
+                .data(data)
+                .enter()
+                .append("text")
+                .attr("class", "label")
+                .attr("x", function(d, i) { return YBarWidth + i * (barWidth + gap) + barWidth / 2; }) // 막대 중앙에 위치
+                .attr("y", startY + 20) // x축 아래에 위치
+                .attr("text-anchor", "middle")
+                .text(function(d) { return d.label; })
+                .style("font-size", "12px");
+
+            // y축 값 추가 (각각의 카운트)
+            svg.selectAll("text.value")
+                .data(data)
+                .enter()
+                .append("text")
+                .attr("class", "value")
+                .attr("x", function(d, i) { return YBarWidth + i * (barWidth + gap) + barWidth / 2; }) // 막대 중앙에 위치
+                .attr("y", function(d, i) { 
+                      if(size[i] >= 230){
+                         return startY - d.value/20 * scaleFactor / 2 - 130;
+                      }
+                      else{
+                         return startY - d.value * scaleFactor - 10; 
+                      } // 값 위치 (막대 위쪽에 위치)   
+                })
+                .attr("text-anchor", "middle")
+                .text(function(d) { return d.value; }) // 카운트 값
+                .style("fill", "black")
+                .style("font-size", "14px");
+        }
+
+        // 각 차트에 대한 최대값을 구해서 동적으로 생성
+        function drawAllCharts() {
+             var maxGenderValue = d3.max(genderData, function(d) { return d.value; });
+             var maxAgeValue = d3.max(ageData, function(d) { return d.value; });
+            var maxPillValue = d3.max(pillData, function(d) { return d.value; });
+            var maxSymptomValue = d3.max(symptomData, function(d) { return d.value; });
+            var maxRiskGroupValue = d3.max(riskGroupData, function(d) { return d.value; });
+            var maxVASValue = d3.max(VASData, function(d) { return d.value; });
+
+            drawBarChart("genderChart", genderData, maxGenderValue);
+            drawBarChart("ageChart", ageData, maxAgeValue);
+            drawBarChart("pillChart", pillData, maxPillValue);
+            drawBarChart("symptomChart", symptomData, maxSymptomValue);
+            drawBarChart("riskGroupChart", riskGroupData, maxRiskGroupValue/20);
+            drawBarChart("VASChart", VASData, maxVASValue);
+        }
+
+
+        drawAllCharts();
+      
+        function ResetSelect() {
+            var CheckBox = document.querySelectorAll('input[type="checkbox"]');
+            CheckBox.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            var Radio = document.querySelectorAll('input[type="radio"]');
+            Radio.forEach(radio => {
+                radio.checked = false;
+            });
+        }
+    </script>
+</body>
+</html>
+```
+
+---
