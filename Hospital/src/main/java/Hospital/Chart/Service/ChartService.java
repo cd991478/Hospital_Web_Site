@@ -29,49 +29,80 @@ public class ChartService {
          
          Map<String, Object> stats = new HashMap<>();
          
-         Integer Total=0;/*문진표DB 총합*/ 
-         Integer Male=0;/*남성*/ Integer Female=0;/*여성*/ 
+         Integer Total=0; /*문진표DB 총합*/ 
          
-         Integer Age_0to9=0;/*10살 미만*/ Integer Age_10to19=0;/*10대*/ 
-         Integer Age_20to29=0;/*20대*/ Integer Age_30to39=0;/*30대*/ 
-         Integer Age_40to49=0;/*40대*/ Integer Age_50to59=0;/*50대*/ 
-         Integer Age_60to69=0;/*60대*/ Integer Age_70to99=0;/*70대 이상*/ 
+         Integer Male=0; /*남성*/ 
+         Integer Female=0; /*여성*/ 
+         
+         Integer Age_0to9=0; /*10살 미만*/ 
+         Integer Age_10to19=0; /*10대*/ 
+         Integer Age_20to29=0; /*20대*/ 
+         Integer Age_30to39=0; /*30대*/ 
+         Integer Age_40to49=0; /*40대*/ 
+         Integer Age_50to59=0; /*50대*/ 
+         Integer Age_60to69=0; /*60대*/ 
+         Integer Age_70to99=0; /*70대 이상*/ 
+         
          /*약복용 유무*/ 
-         Integer TakingPill_Yes=0;Integer TakingPill_No=0;
+         Integer TakingPill_Yes=0;
+         Integer TakingPill_No=0;
+         
          /*증상 분류*/ 
-         Integer Nose=0;/*콧물/코막힘*/ Integer Cough=0;/*기침*/ 	         
-         Integer Pain=0;/*통증(두통/흉통 등)*/Integer Diarrhea=0;/*설사*/ 
-         Integer Nothing=0;/*해당사항 없음*/ 
+         Integer Nose=0; /*콧물/코막힘*/ 
+         Integer Cough=0; /*기침*/ 	         
+         Integer Pain=0; /*통증(두통/흉통 등)*/
+         Integer Diarrhea=0; /*설사*/ 
+         Integer Nothing=0; /*해당사항 없음*/ 
+         
          /*고위험군 분류*/ 
-         Integer HighRiskGroup_Under59=0;/*59개월 미만*/ 
-         Integer HighRiskGroup_Pregnancy=0;/*임산부*/ 
-         Integer HighRiskGroup_Lung=0;/*만성 폐질환*/ 
-         Integer HighRiskGroup_Diebete=0;/*당뇨*/ 
-         Integer HighRiskGroup_Cancer=0;/*암환자*/ 
-         Integer HighRiskGroup_None=0;/*해당사항없음*/ 
+         Integer HighRiskGroup_Under59=0; /*59개월 미만*/ 
+         Integer HighRiskGroup_Pregnancy=0; /*임산부*/ 
+         Integer HighRiskGroup_Lung=0; /*만성 폐질환*/ 
+         Integer HighRiskGroup_Diebete=0; /*당뇨*/ 
+         Integer HighRiskGroup_Cancer=0; /*암환자*/ 
+         Integer HighRiskGroup_None=0; /*해당사항없음*/ 
+         
          /*시각통증척도 0~10*/
-         Integer VAS_0=0;Integer VAS_1=0;	        
-         Integer VAS_2=0;Integer VAS_3=0;	         
-         Integer VAS_4=0;Integer VAS_5=0;	         
-         Integer VAS_6=0;Integer VAS_7=0; 
-         Integer VAS_8=0;Integer VAS_9=0;
-         Integer VAS_10=0;Integer VAS_Sum=0;
-         double VAS_Avg=0.00;/*시각통증척도 평균 0*/
+         Integer VAS_0=0;
+         Integer VAS_1=0;	        
+         Integer VAS_2=0;
+         Integer VAS_3=0;	         
+         Integer VAS_4=0;
+         Integer VAS_5=0;	         
+         Integer VAS_6=0;
+         Integer VAS_7=0; 
+         Integer VAS_8=0;
+         Integer VAS_9=0;
+         Integer VAS_10=0;
+         Integer VAS_Sum=0;
+         
+         double VAS_Avg=0.00; /*시각통증척도 평균 0*/
          
          List<Patient> patient = ps.findAll();
+         
          // 성별 및 나이대에 맞는 환자들만 필터링
           for (Patient p : patient) {
-              boolean genderMatch = true; boolean ageMatch = true;
+        	  
+              boolean genderMatch = true;
+              boolean ageMatch = true;
+              
               // 성별 필터링
-				  if (Gender != null) {						 
+				  if (Gender != null) {		
+					  
 					  String GenderNumber;
-					  if(p.getP_Gender() == 0) {GenderNumber = "M";}
-					  else {GenderNumber = "F";}					
+					  if(p.getP_Gender() == 0) 
+					  {GenderNumber = "M";}
+					  else 
+					  {GenderNumber = "F";}		
+					  
 					  genderMatch = GenderNumber.equals(Gender);
 				  }
+				  
               // 나이대 필터링
               if (AgeRange != null && !AgeRange.isEmpty()) {
+            	  
                   int age = p.getP_Age();//DB에 있는 모든 환자 정보를 가져와 분류
+                  
                   switch (AgeRange) {
                       case "0to9":ageMatch = (age >= 0 && age < 10);
                           break;
@@ -97,23 +128,27 @@ public class ChartService {
               if (genderMatch && ageMatch) {
                   Total++;
                   // 성별 통계
-                  if (p.getP_Gender() == 1) {Female++;} else {Male++;}
+                  if (p.getP_Gender() == 1) 
+                  {Female++;} 
+                  else 
+                  {Male++;}
+                  
                   // 나이대 통계
                   if (p.getP_Age() >= 0 && p.getP_Age() < 10) {
-                      Age_0to9++;//10세 미만
+                      Age_0to9++; //10세 미만
                   } else if (p.getP_Age() >= 10 && p.getP_Age() < 20) {
-                      Age_10to19++;//10대
+                      Age_10to19++; //10대
                   } else if (p.getP_Age() >= 20 && p.getP_Age() < 30) {
-                      Age_20to29++;//20대
+                      Age_20to29++; //20대
                   } else if (p.getP_Age() >= 30 && p.getP_Age() < 40) {
-                      Age_30to39++;//30대
+                      Age_30to39++; //30대
                   } else if (p.getP_Age() >= 40 && p.getP_Age() < 50) {
-                      Age_40to49++;//40대
+                      Age_40to49++; //40대
                   } else if (p.getP_Age() >= 50 && p.getP_Age() < 60) {
-                      Age_50to59++;//50대
+                      Age_50to59++; //50대
                   } else if (p.getP_Age() >= 60 && p.getP_Age() < 70) {
-                      Age_60to69++;//60대
-                  } else {Age_70to99++;/*70대(나머지)*/ }
+                      Age_60to69++; //60대
+                  } else {Age_70to99++; /*70대(나머지)*/ }
 
                   // 기타 통계는 기존의 코드와 동일하게 계산
                   if (p.getP_TakingPill() == 1) {TakingPill_Yes++;} 
@@ -126,6 +161,7 @@ public class ChartService {
                   if (p.getP_Nose() == 0 && p.getP_Cough() == 0 
                 	  && p.getP_Pain() == 0 && p.getP_Diarrhea() == 0) {
                       Nothing++;}
+                  
                   //고위험군 카운트하기
                   if (p.getP_HighRiskGroup() == 0) {HighRiskGroup_Under59++;} 
                   else if (p.getP_HighRiskGroup() == 1) {HighRiskGroup_Pregnancy++;} 
@@ -133,6 +169,7 @@ public class ChartService {
                   else if (p.getP_HighRiskGroup() == 3) {HighRiskGroup_Diebete++;} 
                   else if (p.getP_HighRiskGroup() == 4) {HighRiskGroup_Cancer++;} 
                   else if (p.getP_HighRiskGroup() == 5) {HighRiskGroup_None++;}
+                  
                   //환자별 VAS 점수 카운트
                   if (p.getP_VAS() == 0) {VAS_0++;} 
                   else if (p.getP_VAS() == 1) {VAS_1++;} 
@@ -145,18 +182,20 @@ public class ChartService {
                   else if (p.getP_VAS() == 8) {VAS_8++;} 
                   else if (p.getP_VAS() == 9) {VAS_9++;} 
                   else {VAS_10++;}
+                  
                   VAS_Sum += p.getP_VAS();
               }
           }
+          
          if(Total > 0) {
             VAS_Avg = (double)((double)VAS_Sum / (double)Total);
             VAS_Avg = Math.round(VAS_Avg * 100.0) / 100.0;
          }
-         //카운트된 성별을 Map에 투입
+         
+         //카운트 Map에 투입
          stats.put("Total", Total);
          stats.put("Male", Male);
          stats.put("Female", Female);
-         //카운트된 연령대를 Map에 투입
          stats.put("Age_0to9", Age_0to9);
          stats.put("Age_10to19", Age_10to19);
          stats.put("Age_20to29", Age_20to29);
@@ -165,23 +204,19 @@ public class ChartService {
          stats.put("Age_50to59", Age_50to59);
          stats.put("Age_60to69", Age_60to69);
          stats.put("Age_70to99", Age_70to99);
-         //카운트된 약복용 유무를 Map에 투입
          stats.put("TakingPill_Yes", TakingPill_Yes);
          stats.put("TakingPill_No", TakingPill_No);
-         //카운트된 증상을 Map에 투입
          stats.put("Nose", Nose);
          stats.put("Cough", Cough);
          stats.put("Pain", Pain);
          stats.put("Diarrhea", Diarrhea);
          stats.put("Nothing", Nothing);
-         //카운트된 고위험군 분류를 Map에 투입
          stats.put("HighRiskGroup_Under59", HighRiskGroup_Under59);
          stats.put("HighRiskGroup_Pregnancy", HighRiskGroup_Pregnancy);
          stats.put("HighRiskGroup_Lung", HighRiskGroup_Lung);
          stats.put("HighRiskGroup_Diebete", HighRiskGroup_Diebete);
          stats.put("HighRiskGroup_Cancer", HighRiskGroup_Cancer);
          stats.put("HighRiskGroup_None", HighRiskGroup_None);
-         //카운트된 VAS값을 Map에 투입
          stats.put("VAS_0", VAS_0);
          stats.put("VAS_1", VAS_1);
          stats.put("VAS_2", VAS_2);
