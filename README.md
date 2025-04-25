@@ -1219,12 +1219,8 @@ public class Patient implements Serializable {
 @Service
 @Transactional
 public class PatientService {
-
 	   @Autowired
 	   private PatientRepository patientRepository;
-	   @Autowired
-	   private PatientTreeCacheService patientTreeCacheService;
-	   
 	   public List<Patient> findAll(){
 		   return this.patientRepository.findAll();
 	   }
@@ -1251,15 +1247,11 @@ public class PatientService {
                              .P_Longitude(pcDTO.getP_Longitude())
                              .build();
            	this.patientRepository.save(patient);
-           	patientTreeCacheService.addPatientToCache(patient);
-
            	return patient.getP_Id();
 	   }
-
 		// 등록된 문진표 조회 페이지 정보 로드
 	   public PatientReadDTO PatientRead(Integer P_Id, HttpSession session) {
            	Patient patient = this.patientRepository.findById(P_Id).orElseThrow();
-           
            	String P_Address1 = patient.getP_Address1().split(" ")[1]; // 달서구/수성구/남구 등등
            	String P_Address2 = patient.getP_Address1().split(" ")[2]; // 구마로36길/달구벌대로 등 ~로
 
@@ -1271,8 +1263,7 @@ public class PatientService {
            }
             	session.setAttribute("P_Address1", P_Address1);
             	session.setAttribute("P_Address2", P_Address2);
-
-          	 return PatientReadDTO.PatientInfoFactory(patient);
+		return PatientReadDTO.PatientInfoFactory(patient);
         }
 	   
 	   
